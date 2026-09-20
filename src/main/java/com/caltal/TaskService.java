@@ -3,10 +3,19 @@ package com.caltal;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;      
+import java.time.LocalDate;
 
 @Service
 public class TaskService {
-
+    public List<Task> findTasksOnDate(LocalDate date){
+        List<Task> onDate = new ArrayList<>();
+        for (Task task : repository.findAll()){
+            if (task.getDueDate().equals(date)){
+                onDate.add(task);
+            }
+        }
+        return onDate;
+    }
     private final TaskRepository repository;
 
     public TaskService(TaskRepository repository) {

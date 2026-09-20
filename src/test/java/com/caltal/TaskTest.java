@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+
 // import java.util.ArrayList;
 // import java.util.List;
 
@@ -13,7 +15,7 @@ class TaskTest {
 
     @Test
     void createsTaskWithValidValues() {
-        Task task = new Task("buy milk", 53.8008, -1.5491, 200);
+        Task task = new Task("buy milk", 53.8008, -1.5491, 200, LocalDate.of(2026, 9, 20));
 
         assertEquals("buy milk", task.getName());
         assertEquals(200, task.getRadius());
@@ -22,13 +24,13 @@ class TaskTest {
     @Test
     void rejectsLatitudeAboveNinety() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new Task("impossible", 9999, 0, 200);
+            new Task("impossible", 9999, 0, 200, LocalDate.of(2026, 9, 20));
         });
     }
 
     @Test
     void marksTaskComplete() {
-        Task task = new Task("gym", 53.8100, -1.5600, 100);
+        Task task = new Task("gym", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 20));
         task.markComplete();
 
         assertTrue(task.isComplete());
@@ -36,14 +38,14 @@ class TaskTest {
 
     @Test
     void returnsTrueWhenUserIsInsideGeofence() {
-        Task task = new Task("gym", 53.8100, -1.5600, 100);
+        Task task = new Task("gym", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 20));
         boolean result = task.isWithinRange(53.8101, -1.5600);
         assertTrue(result);
     }
 
     @Test
     void returnsFalseWhenUserIsOutsideGeofence() {
-        Task task = new Task("gym", 53.8100, -1.5600, 100);
+        Task task = new Task("gym", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 20));
         boolean result = task.isWithinRange(53.900, -1.5600);
         assertFalse(result);
     }

@@ -1,11 +1,23 @@
 package com.caltal;
 
+import java.time.LocalDate;
+
+import org.springframework.cglib.core.Local;
+
 public class CreateTaskRequest {
     private String name;
     private double latitude;
     private double longitude;
     private int radius;
+    private LocalDate dueDate;
 
+    public LocalDate getDueDate(){
+        return dueDate;
+    }
+    public void setDueDate(LocalDate dueDate){
+        this.dueDate = dueDate;
+    }
+    
     public String getName(){
         return name;
     }

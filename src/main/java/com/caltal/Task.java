@@ -4,35 +4,43 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-// import jakarta.persistence.IdClass;
+import java.time.LocalDate;
 
-@Entity 
+@Entity
 
 public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private LocalDate dueDate;
     private Long id;
     private String name;
     private double latitude;
     private double longitude;
     private int radius;
     private boolean isComplete;
-    
-    protected Task(){
+
+    protected Task() {
 
     }
 
-    public Task(String name, double latitude, double longitude, int radius) {
+    public Task(String name, double latitude, double longitude, int radius, LocalDate dueDate) {
         setName(name);
         setLatitude(latitude);
         setLongitude(longitude);
         setRadius(radius);
+        setDueDate(dueDate);
         this.isComplete = false;
 
     }
 
-    public Long getID(){
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    
+
+    public Long getID() {
         return id;
     }
 
@@ -82,7 +90,9 @@ public class Task {
         return isComplete;
     }
 
-    
+    public LocalDate getDuDate() {
+        return dueDate;
+    }
 
     public void setName(String name) {
         if (name == null || name.isBlank()) {
@@ -110,6 +120,13 @@ public class Task {
             throw new IllegalArgumentException("Radius must be positive");
         }
         this.radius = radius;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        if (dueDate == null) {
+            throw new IllegalArgumentException("Due date must not be null");
+        }
+        this.dueDate = dueDate;
     }
 
     public void markComplete() {

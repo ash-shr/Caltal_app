@@ -11,7 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -35,6 +36,12 @@ public class TaskController {
         return service.findNearbyTasks(lat, lon);
     }
 
+    @GetMapping("/on")
+    public List<Task> getTasksOnDate(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return service.findTasksOnDate(date);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Task createTask(@RequestBody CreateTaskRequest request) {
@@ -42,7 +49,8 @@ public class TaskController {
                 request.getName(),
                 request.getLatitude(),
                 request.getLongitude(),
-                request.getRadius());
+                request.getRadius(),
+                request.getDueDate());
 
         service.addTask(task);
         return task;
