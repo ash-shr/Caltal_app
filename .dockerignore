@@ -1,7 +1,6 @@
-target/*
-!target/*.jar
+target/
+frontend/
 data/
 .git/
 .github/
-data/
 *.md
