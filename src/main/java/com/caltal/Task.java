@@ -90,9 +90,7 @@ public class Task {
         return isComplete;
     }
 
-    public LocalDate getDuDate() {
-        return dueDate;
-    }
+   
 
     public void setName(String name) {
         if (name == null || name.isBlank()) {
