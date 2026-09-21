@@ -1,0 +1,42 @@
+{
+  "family": "caltal",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::302303422811:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "caltal",
+      "image": "302303422811.dkr.ecr.eu-west-2.amazonaws.com/caltal:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DB_URL",
+          "value": "jdbc:postgresql://caltal-db.c5m8qu0cwy83.eu-west-2.rds.amazonaws.com:5432/caltal"
+        },
+        {
+          "name": "DB_USER",
+          "value": "caltal"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "value": "20011971luC!"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/caltal",
+          "awslogs-region": "eu-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
