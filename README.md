@@ -60,12 +60,30 @@ mvn spring-boot:run
 
 Connection details are read from `DB_URL`, `DB_USER` and `DB_PASSWORD` environment variables, falling back to `localhost:5432/caltal` if unset.
 
+## Frontend
+
+A React client lives in `frontend/`, built with Vite. It lists tasks and creates new ones against the live API.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Runs on `http://localhost:5173`. The backend allows cross-origin requests from that address.
+
 ## API
 
 **List all tasks**
 ```
 GET /api/tasks
 ```
+
+**Tasks due on a date**
+```
+GET /api/tasks/on?date=2026-09-21
+```
+Returns all tasks due on the given date. Dates use ISO format (`YYYY-MM-DD`).
 
 **Find tasks near a position**
 ```
@@ -82,18 +100,21 @@ Content-Type: application/json
   "name": "buy milk",
   "latitude": 53.7960,
   "longitude": -1.5450,
-  "radius": 200
+  "radius": 200,
+  "dueDate": "2026-09-21"
 }
 ```
-Returns `201 Created` with the saved task. Invalid coordinates return `400 Bad Request` with the validation message.
+Returns `201 Created` with the saved task. Invalid coordinates or a missing due date return `400 Bad Request` with the validation message.
 
 Example:
 
 ```bash
-curl -X POST http://localhost:8080/api/tasks \
+curl -X POST https://caltal.fly.dev/api/tasks \
   -H "Content-Type: application/json" \
-  -d '{"name":"buy milk","latitude":53.7960,"longitude":-1.5450,"radius":200}'
+  -d '{"name":"buy milk","latitude":53.7960,"longitude":-1.5450,"radius":200,"dueDate":"2026-09-21"}'
 ```
+
+## Tests
 
 ## Tests
 
@@ -101,13 +122,14 @@ curl -X POST http://localhost:8080/api/tasks \
 mvn test
 ```
 
-16 tests across three classes:
+18 tests across four classes:
 
 - `TaskTest` — domain validation, completion, geofence calculation
-- `TaskServiceTest` — filtering logic, including a hand-written fake repository used to verify the service calls through to storage
+- `TaskServiceTest` — filtering by location and by date, including a hand-written fake repository used to verify the service calls through to storage
 - `TaskControllerTest` — the web layer via `@WebMvcTest` and MockMvc, with the service mocked
+- `JpaTaskRepositoryTest` — the real entity mapping against an in-memory H2 database via `@DataJpaTest`
 
-None of them need a database or a running server, so the suite completes in a couple of seconds.
+The first three need no database or running server and complete in a couple of seconds. The JPA test exists because unit tests against an in-memory repository can't catch mapping errors — a misplaced `@Id` annotation passed every other test and only failed once deployed.
 
 The geofence logic was built test-first: the tests were written against `isWithinRange` before it existed, implemented with a flat-plane approximation to get them passing, then refactored to Haversine with the unchanged tests confirming the behaviour hadn't shifted.
 
@@ -124,7 +146,8 @@ Both deployments read the same three environment variables (`DB_URL`, `DB_USER`,
 
 ## Notes and known limitations
 
-- **Schema management** uses Hibernate's `ddl-auto=update`. Fine for development; a production deployment would want Flyway or Liquibase migrations.
+- **Schema management** uses Hibernate's `ddl-auto=update`, which fails silently when it can't apply a change — the app starts against a mismatched schema. Flyway migrations would make schema changes explicit and fail the deploy instead.
 - - **Database credentials** are supplied as environment variables. On Fly these come from encrypted secrets; the AWS deployment passed them in the task definition, which should move to Secrets Manager.
 - **No authentication.** Every task is visible to every caller; there's no concept of a user yet.
 - **No client.** This is the backend only — there's no web or mobile frontend at present.
+- **Frontend is early.** The React client lists and creates tasks; the calendar view, styling and geolocation are in progress.
