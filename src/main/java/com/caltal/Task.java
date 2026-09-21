@@ -12,13 +12,14 @@ public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private LocalDate dueDate;
     private Long id;
+
     private String name;
     private double latitude;
     private double longitude;
     private int radius;
     private boolean isComplete;
+    private LocalDate dueDate;
 
     protected Task() {
 
