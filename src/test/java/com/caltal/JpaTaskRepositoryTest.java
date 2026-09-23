@@ -13,15 +13,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class JpaTaskRepositoryTest {
 
     @Autowired
-    private SpringDataTaskRepository repository;
+    private SpringDataTaskRepository tasks;
+
+    @Autowired
+    private UserRepository users;
 
     @Test
     void savesTaskAndAssignsId() {
-        Task task = new Task("buy milk", 53.796, -1.545, 200, LocalDate.of(2026, 9, 21));
+        User owner = users.save(new User("test@example.com", "hash", "Test User"));
 
-        Task saved = repository.save(task);
+        Task task = new Task("buy milk", 53.796, -1.545, 200,
+                LocalDate.of(2026, 9, 21), owner);
+
+        Task saved = tasks.save(task);
 
         assertNotNull(saved.getId());
-        assertEquals(1, repository.findAll().size());
+        assertEquals(1, tasks.findAllByOwner(owner).size());
     }
 }

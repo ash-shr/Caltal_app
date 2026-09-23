@@ -5,6 +5,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 
@@ -12,6 +16,8 @@ public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    
+    
     private Long id;
 
     private String name;
@@ -21,25 +27,28 @@ public class Task {
     private boolean isComplete;
     private LocalDate dueDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnore
+    private User owner;
     protected Task() {
 
     }
 
-    public Task(String name, double latitude, double longitude, int radius, LocalDate dueDate) {
+    public Task(String name, double latitude, double longitude, int radius,
+            LocalDate dueDate, User owner) {
         setName(name);
         setLatitude(latitude);
         setLongitude(longitude);
         setRadius(radius);
         setDueDate(dueDate);
+        setOwner(owner);
         this.isComplete = false;
-
     }
 
     public LocalDate getDueDate() {
         return dueDate;
     }
-
-    
 
     public Long getId() {
         return id;
@@ -91,7 +100,16 @@ public class Task {
         return isComplete;
     }
 
-   
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Task must have an owner");
+        }
+        this.owner = owner;
+    }
 
     public void setName(String name) {
         if (name == null || name.isBlank()) {
