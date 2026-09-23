@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAllTasks, createTask } from './api';
+import Calendar from './Calendar';
 
 function App() {
   const [tasks, setTasks] = useState([]);
@@ -43,7 +44,7 @@ function App() {
   return (
     <div>
       <h1>Caltal</h1>
-
+      <Calendar />
       <form onSubmit={handleSubmit}>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Task name" />
         <input value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="Latitude" />
