@@ -1,23 +1,17 @@
 import { useState, useEffect } from 'react';
-import { getAllTasks, createTask } from './api';
+import { format } from 'date-fns';
 import Calendar from './Calendar';
+import { createTask } from './api';
 
 function App() {
-  const [tasks, setTasks] = useState([]);
+  const [selected, setSelected] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [name, setName] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [radius, setRadius] = useState('');
-  const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
-  const loadTasks = () => {
-    getAllTasks().then(setTasks);
-  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -28,15 +22,14 @@ function App() {
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radius: parseInt(radius),
-      dueDate,
+      dueDate: format(selected, 'yyyy-MM-dd'),
     })
       .then(() => {
-        loadTasks();
         setName('');
         setLatitude('');
         setLongitude('');
         setRadius('');
-        setDueDate('');
+        setRefreshKey(key => key + 1);
       })
       .catch(err => setError(err.message));
   };
@@ -44,25 +37,24 @@ function App() {
   return (
     <div>
       <h1>Caltal</h1>
-      <Calendar />
+
+      <Calendar
+        selected={selected}
+        onSelect={setSelected}
+        refreshKey={refreshKey}
+      />
+
+      <h3>Add a task on {format(selected, 'd MMMM')}</h3>
+
       <form onSubmit={handleSubmit}>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Task name" />
         <input value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="Latitude" />
         <input value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="Longitude" />
         <input value={radius} onChange={e => setRadius(e.target.value)} placeholder="Radius (m)" />
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
         <button type="submit">Add task</button>
       </form>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      <ul>
-        {tasks.map(task => (
-          <li key={task.id}>
-            {task.name} — {task.dueDate} — {task.radius}m
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

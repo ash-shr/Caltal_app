@@ -4,27 +4,24 @@ import { format } from 'date-fns';
 import 'react-day-picker/style.css';
 import { getTasksOnDate } from './api';
 
-function Calendar() {
-  const [selected, setSelected] = useState(new Date());
+function Calendar({ selected, onSelect, refreshKey }) {
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!selected) return;
 
-    const dateString = format(selected, 'yyyy-MM-dd');
-
-    getTasksOnDate(dateString)
+    getTasksOnDate(format(selected, 'yyyy-MM-dd'))
       .then(setTasks)
       .catch(err => setError(err.message));
-  }, [selected]);
+  }, [selected, refreshKey]);
 
   return (
     <div>
       <DayPicker
         mode="single"
         selected={selected}
-        onSelect={setSelected}
+        onSelect={onSelect}
       />
 
       {selected && <h2>{format(selected, 'EEEE d MMMM yyyy')}</h2>}
@@ -36,9 +33,7 @@ function Calendar() {
       ) : (
         <ul>
           {tasks.map(task => (
-            <li key={task.id}>
-              {task.name} — {task.radius}m
-            </li>
+            <li key={task.id}>{task.name} — {task.radius}m</li>
           ))}
         </ul>
       )}
