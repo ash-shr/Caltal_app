@@ -31,8 +31,9 @@ function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
                 <MapContainer
                     center={centre}
                     zoom={13}
+                    zoomControl={false}
                     className="h-full w-full"
-                    scrollWheelZoom={false}
+                    scrollWheelZoom={true}
                 >
                     <TileLayer
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
