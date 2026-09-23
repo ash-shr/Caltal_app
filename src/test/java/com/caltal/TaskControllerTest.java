@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
@@ -28,7 +30,11 @@ class TaskControllerTest {
     @MockitoBean
     private TaskService service;
 
+    @MockitoBean 
+    private JwtService jwtService;
+
     @Test
+    @WithMockUser
     void returnsNearbyTasksAsJson() throws Exception {
         Task task = new Task("buy milk", 53.7960, -1.5450, 200, LocalDate.of(2026, 9, 20));
         when(service.findNearbyTasks(anyDouble(), anyDouble())).thenReturn(List.of(task));
@@ -39,6 +45,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void returnsAllTasksAsJson() throws Exception {
         Task milk = new Task("buy milk", 53.7960, -1.5450, 200, LocalDate.of(2026, 9, 20));
         Task gym = new Task("gym", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 20));
@@ -50,8 +57,10 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createsTaskFromPostRequest() throws Exception {
         mockMvc.perform(post("/api/tasks")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"buy milk\",\"latitude\":53.796,\"longitude\":-1.545,\"radius\":200,\"dueDate\":\"2026-09-20\"}"))
                 .andExpect(status().isCreated())
@@ -61,8 +70,10 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void rejectsTaskWithInvalidLatitude() throws Exception {
         mockMvc.perform(post("/api/tasks")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"impossible\",\"latitude\":9999,\"longitude\":0,\"radius\":200}"))
                 .andExpect(status().isBadRequest());
