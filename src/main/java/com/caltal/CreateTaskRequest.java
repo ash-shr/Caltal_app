@@ -1,15 +1,18 @@
 package com.caltal;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 // import org.springframework.cglib.core.Local;
 
 public class CreateTaskRequest {
     private String name;
-    private double latitude;
-    private double longitude;
-    private int radius;
+    private Double latitude;
+    private Double longitude;
+    private Integer radius;
     private LocalDate dueDate;
+    private ReminderType reminderType;
+    private LocalTime remindAt;
 
     public LocalDate getDueDate(){
         return dueDate;
@@ -17,7 +20,7 @@ public class CreateTaskRequest {
     public void setDueDate(LocalDate dueDate){
         this.dueDate = dueDate;
     }
-    
+
     public String getName(){
         return name;
     }
@@ -26,27 +29,43 @@ public class CreateTaskRequest {
         this.name = name;
     }
 
-    public double getLatitude(){
+    public Double getLatitude(){
         return latitude;
     }
 
-    public void setLatitude(double latitude){
+    public void setLatitude(Double latitude){
         this.latitude = latitude;
     }
 
-    public double getLongitude(){
+    public Double getLongitude(){
         return longitude;
     }
 
-    public void setLongitude(double longitude){
+    public void setLongitude(Double longitude){
         this.longitude = longitude;
     }
 
-    public int getRadius(){
+    public Integer getRadius(){
         return radius;
     }
 
-    public void setRadius(int radius){
+    public void setRadius(Integer radius){
         this.radius = radius;
+    }
+
+    public ReminderType getReminderType(){
+        return reminderType;
+    }
+
+    public void setReminderType(ReminderType reminderType){
+        this.reminderType = reminderType;
+    }
+
+    public LocalTime getRemindAt(){
+        return remindAt;
+    }
+
+    public void setRemindAt(LocalTime remindAt){
+        this.remindAt = remindAt;
     }
 }

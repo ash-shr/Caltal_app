@@ -49,11 +49,13 @@ public class TaskController {
     public Task createTask(@RequestBody CreateTaskRequest request) {
         Task task = new Task(
                 request.getName(),
+                request.getDueDate(),
+                currentUser.get(),
+                request.getReminderType(),
                 request.getLatitude(),
                 request.getLongitude(),
                 request.getRadius(),
-                request.getDueDate(),
-                currentUser.get());
+                request.getRemindAt());
 
         service.addTask(task);
         return task;

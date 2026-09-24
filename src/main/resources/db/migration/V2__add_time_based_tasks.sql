@@ -1,0 +1,19 @@
+ALTER TABLE task
+ADD COLUMN reminder_type VARCHAR(50);
+
+UPDATE task SET reminder_type = 'LOCATION' WHERE reminder_type IS NULL;
+
+ALTER TABLE task
+ALTER COLUMN reminder_type SET NOT NULL;
+
+ALTER TABLE task
+ADD COLUMN remind_at TIME;
+
+ALTER TABLE task
+ALTER COLUMN latitude DROP NOT NULL;
+
+ALTER TABLE task
+ALTER COLUMN longitude DROP NOT NULL;
+
+ALTER TABLE task
+ALTER COLUMN radius DROP NOT NULL;

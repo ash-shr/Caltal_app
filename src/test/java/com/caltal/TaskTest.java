@@ -1,6 +1,7 @@
 package com.caltal;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
@@ -58,6 +59,42 @@ class TaskTest {
     void rejectsTaskWithoutOwner() {
         assertThrows(IllegalArgumentException.class, () -> {
             new Task("orphan", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 21), null);
+        });
+    }
+
+    @Test
+    void createsValidTimeBasedTask() {
+        Task task = new Task("meeting", LocalDate.of(2026, 9, 21), owner, ReminderType.TIME,
+                null, null, null, LocalTime.of(14, 30));
+
+        assertEquals("meeting", task.getName());
+        assertEquals(ReminderType.TIME, task.getReminderType());
+        assertEquals(LocalTime.of(14, 30), task.getRemindAt());
+    }
+
+    @Test
+    void createsValidBothTypeTask() {
+        Task task = new Task("meeting at gym", LocalDate.of(2026, 9, 21), owner, ReminderType.BOTH,
+                53.8100, -1.5600, 100, LocalTime.of(14, 30));
+
+        assertEquals("meeting at gym", task.getName());
+        assertEquals(ReminderType.BOTH, task.getReminderType());
+        assertEquals(LocalTime.of(14, 30), task.getRemindAt());
+    }
+
+    @Test
+    void rejectsLocationTaskWithMissingCoordinates() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            new Task("missing coords", LocalDate.of(2026, 9, 21), owner, ReminderType.LOCATION,
+                    null, -1.5600, 100, null);
+        });
+    }
+
+    @Test
+    void rejectsTimeTaskWithMissingTime() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            new Task("missing time", LocalDate.of(2026, 9, 21), owner, ReminderType.TIME,
+                    null, null, null, null);
         });
     }
 }

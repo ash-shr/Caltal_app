@@ -1,6 +1,7 @@
 package com.caltal;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,8 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/tasks")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"buy milk\",\"latitude\":53.796,\"longitude\":-1.545,"
+                .content("{\"name\":\"buy milk\",\"reminderType\":\"LOCATION\","
+                        + "\"latitude\":53.796,\"longitude\":-1.545,"
                         + "\"radius\":200,\"dueDate\":\"2026-09-21\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("buy milk"));
@@ -89,8 +91,68 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/tasks")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"impossible\",\"latitude\":9999,\"longitude\":0,"
+                .content("{\"name\":\"impossible\",\"reminderType\":\"LOCATION\","
+                        + "\"latitude\":9999,\"longitude\":0,"
                         + "\"radius\":200,\"dueDate\":\"2026-09-21\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    void createsTimeBasedTask() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(post("/api/tasks")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"meeting\",\"reminderType\":\"TIME\","
+                        + "\"remindAt\":\"14:30\",\"dueDate\":\"2026-09-21\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("meeting"));
+
+        verify(service).addTask(any(Task.class));
+    }
+
+    @Test
+    @WithMockUser
+    void createsBothTypeTask() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(post("/api/tasks")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"gym meeting\",\"reminderType\":\"BOTH\","
+                        + "\"latitude\":53.81,\"longitude\":-1.56,\"radius\":100,"
+                        + "\"remindAt\":\"14:30\",\"dueDate\":\"2026-09-21\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("gym meeting"));
+
+        verify(service).addTask(any(Task.class));
+    }
+
+    @Test
+    @WithMockUser
+    void rejectsLocationTaskWithoutCoordinates() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(post("/api/tasks")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"no coords\",\"reminderType\":\"LOCATION\","
+                        + "\"dueDate\":\"2026-09-21\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    void rejectsTimeTaskWithoutTime() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(post("/api/tasks")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"no time\",\"reminderType\":\"TIME\","
+                        + "\"dueDate\":\"2026-09-21\"}"))
                 .andExpect(status().isBadRequest());
     }
 

@@ -33,7 +33,7 @@ public class TaskService {
         List<Task> nearby = new ArrayList<>();
 
         for (Task task : repository.findAllByOwner(owner)) {
-            if (!task.isComplete() && task.isWithinRange(userLatitude, userLongitude)) {
+            if (!task.isComplete() && task.getLatitude() != null && task.isWithinRange(userLatitude, userLongitude)) {
                 nearby.add(task);
             }
         }

@@ -1,7 +1,7 @@
 package com.caltal;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+// import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -24,6 +24,8 @@ class TaskServiceTest {
         TaskService service = newService();
         service.addTask(new Task("buy milk", 53.7960, -1.5450, 200, today, owner));
         service.addTask(new Task("gym", 53.8100, -1.5600, 100, today, owner));
+        service.addTask(new Task("meeting", today, owner, ReminderType.TIME, null, null, null,
+                java.time.LocalTime.of(14, 30)));
 
         List<Task> nearby = service.findNearbyTasks(owner, 53.7961, -1.5451);
 
