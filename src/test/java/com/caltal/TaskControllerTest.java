@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -14,6 +15,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,10 +30,22 @@ class TaskControllerTest {
     @MockitoBean
     private TaskService service;
 
+    @MockitoBean
+    private CurrentUserService currentUser;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    private final User owner = new User("test@example.com", "hash", "Test User");
+    private final LocalDate today = LocalDate.of(2026, 9, 21);
+
     @Test
+    @WithMockUser
     void returnsNearbyTasksAsJson() throws Exception {
-        Task task = new Task("buy milk", 53.7960, -1.5450, 200, LocalDate.of(2026, 9, 20));
-        when(service.findNearbyTasks(anyDouble(), anyDouble())).thenReturn(List.of(task));
+        when(currentUser.get()).thenReturn(owner);
+        Task task = new Task("buy milk", 53.7960, -1.5450, 200, today, owner);
+        when(service.findNearbyTasks(any(User.class), anyDouble(), anyDouble()))
+                .thenReturn(List.of(task));
 
         mockMvc.perform(get("/api/tasks/nearby?lat=53.7961&lon=-1.5451"))
                 .andExpect(status().isOk())
@@ -39,10 +53,12 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void returnsAllTasksAsJson() throws Exception {
-        Task milk = new Task("buy milk", 53.7960, -1.5450, 200, LocalDate.of(2026, 9, 20));
-        Task gym = new Task("gym", 53.8100, -1.5600, 100, LocalDate.of(2026, 9, 20));
-        when(service.getAllTasks()).thenReturn(List.of(milk, gym));
+        when(currentUser.get()).thenReturn(owner);
+        Task milk = new Task("buy milk", 53.7960, -1.5450, 200, today, owner);
+        Task gym = new Task("gym", 53.8100, -1.5600, 100, today, owner);
+        when(service.getAllTasks(any(User.class))).thenReturn(List.of(milk, gym));
 
         mockMvc.perform(get("/api/tasks"))
                 .andExpect(status().isOk())
@@ -50,10 +66,15 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createsTaskFromPostRequest() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
         mockMvc.perform(post("/api/tasks")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"buy milk\",\"latitude\":53.796,\"longitude\":-1.545,\"radius\":200,\"dueDate\":\"2026-09-20\"}"))
+                .content("{\"name\":\"buy milk\",\"latitude\":53.796,\"longitude\":-1.545,"
+                        + "\"radius\":200,\"dueDate\":\"2026-09-21\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("buy milk"));
 
@@ -61,10 +82,21 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void rejectsTaskWithInvalidLatitude() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
         mockMvc.perform(post("/api/tasks")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"impossible\",\"latitude\":9999,\"longitude\":0,\"radius\":200}"))
+                .content("{\"name\":\"impossible\",\"latitude\":9999,\"longitude\":0,"
+                        + "\"radius\":200,\"dueDate\":\"2026-09-21\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsUnauthenticatedRequest() throws Exception {
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isUnauthorized());
     }
 }

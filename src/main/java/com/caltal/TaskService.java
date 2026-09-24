@@ -1,21 +1,14 @@
 package com.caltal;
 
-import org.springframework.stereotype.Service;
-import java.util.ArrayList;
-import java.util.List;      
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
 
 @Service
 public class TaskService {
-    public List<Task> findTasksOnDate(LocalDate date){
-        List<Task> onDate = new ArrayList<>();
-        for (Task task : repository.findAll()){
-            if (task.getDueDate().equals(date)){
-                onDate.add(task);
-            }
-        }
-        return onDate;
-    }
+
     private final TaskRepository repository;
 
     public TaskService(TaskRepository repository) {
@@ -32,19 +25,31 @@ public class TaskService {
         repository.save(task);
     }
 
-    public List<Task> getAllTasks() {
-        return repository.findAll();
+    public List<Task> getAllTasks(User owner) {
+        return repository.findAllByOwner(owner);
     }
 
-    public List<Task> findNearbyTasks(double userLatitude, double userLongitude) {
+    public List<Task> findNearbyTasks(User owner, double userLatitude, double userLongitude) {
         List<Task> nearby = new ArrayList<>();
 
-        for (Task task : repository.findAll()) {
+        for (Task task : repository.findAllByOwner(owner)) {
             if (!task.isComplete() && task.isWithinRange(userLatitude, userLongitude)) {
                 nearby.add(task);
             }
         }
 
         return nearby;
+    }
+
+    public List<Task> findTasksOnDate(User owner, LocalDate date) {
+        List<Task> onDate = new ArrayList<>();
+
+        for (Task task : repository.findAllByOwner(owner)) {
+            if (task.getDueDate().equals(date)) {
+                onDate.add(task);
+            }
+        }
+
+        return onDate;
     }
 }
