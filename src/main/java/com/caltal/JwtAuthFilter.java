@@ -36,11 +36,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 String email = jwtService.extractEmail(token);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(email, null, List.of());
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email,
+                        null, List.of());
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception exception) {
+                System.out.println("JWT validation failed: " + exception.getMessage());
                 SecurityContextHolder.clearContext();
             }
         }
