@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import Calendar from './Calendar';
 import MapPicker from './MapPicker';
-import { createTask } from './api';
+import Auth from './Auth';
+import { createTask, getStoredUser, clearSession } from './api';
 
 function App() {
+  const [user, setUser] = useState(getStoredUser());
+
   const [selected, setSelected] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -13,6 +16,11 @@ function App() {
   const [longitude, setLongitude] = useState(null);
   const [radius, setRadius] = useState(200);
   const [error, setError] = useState('');
+
+  const handleSignOut = () => {
+    clearSession();
+    setUser(null);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -40,13 +48,30 @@ function App() {
     'text-stone-800 placeholder:text-stone-400 transition-colors duration-200 ' +
     'focus:border-stone-400 focus:outline-none';
 
+  if (!user) {
+    return <Auth onAuthenticated={setUser} />;
+  }
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 antialiased">
       <div className="mx-auto max-w-2xl px-6 py-16">
 
-        <header className="mb-12">
-          <h1 className="text-2xl font-medium tracking-tight">Caltal</h1>
-          <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
+        <header className="mb-12 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-medium tracking-tight">Caltal</h1>
+            <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-sm text-stone-600">{user.name}</p>
+            <button
+              onClick={handleSignOut}
+              className="mt-1 text-xs text-stone-400 underline underline-offset-2
+                         transition-colors hover:text-stone-600"
+            >
+              Sign out
+            </button>
+          </div>
         </header>
 
         <Calendar
