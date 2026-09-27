@@ -117,7 +117,11 @@ function App() {
           <Calendar selected={selected} onSelect={setSelected} refreshKey={refreshKey} />
 
           <aside className="space-y-10">
-            <TaskList selected={selected} refreshKey={refreshKey} />
+            <TaskList
+              selected={selected}
+              refreshKey={refreshKey}
+              onChanged={() => setRefreshKey(key => key + 1)}
+            />
 
             <section>
               <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-stone-400">

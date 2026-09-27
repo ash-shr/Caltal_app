@@ -3,12 +3,17 @@ package com.caltal;
 import java.time.LocalDate;
 // import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class TaskServiceTest {
 
@@ -99,5 +104,60 @@ class TaskServiceTest {
         service.getAllTasks(owner).clear();
 
         assertEquals(1, service.getAllTasks(owner).size());
+    }
+
+    @Test
+    void completesATaskTheUserOwns() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+        Task task = new Task("water plants", 53.7960, -1.5450, 200, today, owner);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(task));
+
+        Task completed = service.completeTask(owner, 1L);
+
+        assertTrue(completed.isComplete());
+        verify(repository).save(task);
+    }
+
+    @Test
+    void refusesToCompleteATaskTheUserDoesNotOwn() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+
+        // Someone else's task, or no such task: the repository returns nothing either way
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> service.completeTask(owner, 1L));
+    }
+
+    @Test
+    void deletesATaskTheUserOwns() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+        Task task = new Task("cancel gym", 53.7960, -1.5450, 200, today, owner);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(task));
+
+        service.deleteTask(owner, 1L);
+
+        verify(repository).delete(task);
+    }
+
+    @Test
+    void refusesToDeleteATaskTheUserDoesNotOwn() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> service.deleteTask(owner, 1L));
+    }
+
+    @Test
+    void aNewTaskStartsIncomplete() {
+        Task task = new Task("new thing", 53.7960, -1.5450, 200, today, owner);
+
+        assertFalse(task.isComplete());
     }
 }

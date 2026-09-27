@@ -49,6 +49,11 @@ async function request(url, options = {}) {
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 
+  // 204 No Content has no body; parsing it as JSON would throw.
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json();
 }
 
@@ -85,4 +90,12 @@ export function createTask(task) {
     method: 'POST',
     body: JSON.stringify(task),
   });
+}
+
+export function completeTask(id) {
+  return request(`${BASE_URL}/tasks/${id}/complete`, { method: 'POST' });
+}
+
+export function deleteTask(id) {
+  return request(`${BASE_URL}/tasks/${id}`, { method: 'DELETE' });
 }

@@ -1,6 +1,7 @@
 package com.caltal;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.context.annotation.Primary;
@@ -23,5 +24,15 @@ public class JpaTaskRepository implements TaskRepository {
     @Override
     public List<Task> findAllByOwner(User owner) {
         return springDataRepository.findAllByOwner(owner);
+    }
+
+    @Override
+    public Optional<Task> findByIdAndOwner(Long id, User owner) {
+        return springDataRepository.findByIdAndOwner(id, owner);
+    }
+
+    @Override
+    public void delete(Task task) {
+        springDataRepository.delete(task);
     }
 }

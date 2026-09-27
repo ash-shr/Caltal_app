@@ -14,11 +14,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -160,5 +163,39 @@ class TaskControllerTest {
     void rejectsUnauthenticatedRequest() throws Exception {
         mockMvc.perform(get("/api/tasks"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser
+    void completingATaskReturnsIt() throws Exception {
+        Task task = new Task("water plants", 53.7960, -1.5450, 200, today, owner);
+        when(currentUser.get()).thenReturn(owner);
+        when(service.completeTask(any(), eq(1L))).thenReturn(task);
+
+        mockMvc.perform(post("/api/tasks/1/complete").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("water plants"));
+    }
+
+    @Test
+    @WithMockUser
+    void deletingATaskReturnsNoContent() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(delete("/api/tasks/1").with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(service).deleteTask(any(), eq(1L));
+    }
+
+    @Test
+    @WithMockUser
+    void deletingSomeoneElsesTaskReturnsNotFound() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+        doThrow(new TaskNotFoundException("No task with id 99"))
+                .when(service).deleteTask(any(), eq(99L));
+
+        mockMvc.perform(delete("/api/tasks/99").with(csrf()))
+                .andExpect(status().isNotFound());
     }
 }

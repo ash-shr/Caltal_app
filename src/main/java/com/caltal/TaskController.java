@@ -6,7 +6,9 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,6 +61,23 @@ public class TaskController {
 
         service.addTask(task);
         return task;
+    }
+
+    @PostMapping("/{id}/complete")
+    public Task completeTask(@PathVariable Long id) {
+        return service.completeTask(currentUser.get(), id);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTask(@PathVariable Long id) {
+        service.deleteTask(currentUser.get(), id);
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public String handleMissingTask(TaskNotFoundException exception) {
+        return exception.getMessage();
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -41,6 +41,22 @@ public class TaskService {
         return nearby;
     }
 
+    public Task completeTask(User owner, Long id) {
+        Task task = findOwnedTask(owner, id);
+        task.markComplete();
+        repository.save(task);
+        return task;
+    }
+
+    public void deleteTask(User owner, Long id) {
+        repository.delete(findOwnedTask(owner, id));
+    }
+
+    private Task findOwnedTask(User owner, Long id) {
+        return repository.findByIdAndOwner(id, owner)
+                .orElseThrow(() -> new TaskNotFoundException("No task with id " + id));
+    }
+
     public List<Task> findTasksOnDate(User owner, LocalDate date) {
         List<Task> onDate = new ArrayList<>();
 
