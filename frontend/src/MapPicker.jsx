@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { memo } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -23,12 +23,6 @@ function ClickHandler({ onPick }) {
 }
 
 function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
-  const [localRadius, setLocalRadius] = useState(radius);
-
-  useEffect(() => {
-    setLocalRadius(radius);
-  }, [radius]);
-
   const hasPosition = latitude !== null && longitude !== null;
   const centre = hasPosition ? [latitude, longitude] : [53.8008, -1.5491];
 
@@ -53,7 +47,7 @@ function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
               <Marker position={[latitude, longitude]} icon={icon} />
               <Circle
                 center={[latitude, longitude]}
-                radius={localRadius}
+                radius={radius}
                 pathOptions={{
                   color: '#292524',
                   fillColor: '#292524',
@@ -73,13 +67,11 @@ function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
             min="50"
             max="2000"
             step="50"
-            value={localRadius}
-            onChange={e => setLocalRadius(parseInt(e.target.value))}
-            onMouseUp={() => onRadiusChange(localRadius)}
-            onTouchEnd={() => onRadiusChange(localRadius)}
+            value={radius}
+            onChange={e => onRadiusChange(Number(e.target.value))}
             className="flex-1 accent-stone-800"
           />
-          <span className="w-16 text-right text-sm text-stone-500">{localRadius}m</span>
+          <span className="w-16 text-right text-sm text-stone-500">{radius}m</span>
         </div>
       ) : (
         <p className="text-sm text-stone-400">Click the map to set a location.</p>
