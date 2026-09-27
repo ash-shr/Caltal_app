@@ -5,6 +5,13 @@ import MapPicker from './MapPicker';
 import Auth from './Auth';
 import { createTask, getStoredUser, clearSession } from './api';
 
+// The three reminder kinds the backend accepts, with the labels we show.
+const REMINDER_TYPES = [
+  { value: 'LOCATION', label: 'Place' },
+  { value: 'TIME', label: 'Time' },
+  { value: 'BOTH', label: 'Both' },
+];
+
 function App() {
   const [user, setUser] = useState(getStoredUser());
 
@@ -12,10 +19,15 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [name, setName] = useState('');
+  const [reminderType, setReminderType] = useState('LOCATION');
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
   const [radius, setRadius] = useState(200);
+  const [remindAt, setRemindAt] = useState('');
   const [error, setError] = useState('');
+
+  const needsLocation = reminderType === 'LOCATION' || reminderType === 'BOTH';
+  const needsTime = reminderType === 'TIME' || reminderType === 'BOTH';
 
   const handleSignOut = () => {
     clearSession();
@@ -26,18 +38,41 @@ function App() {
     event.preventDefault();
     setError('');
 
-    createTask({
+    // Catch the obvious mistakes here rather than making a round trip for them.
+    if (needsLocation && (latitude === null || longitude === null)) {
+      setError('Pick a place on the map.');
+      return;
+    }
+    if (needsTime && !remindAt) {
+      setError('Choose a time.');
+      return;
+    }
+
+    // The backend rejects a task carrying fields its type does not allow,
+    // so only send the ones this type needs.
+    const task = {
       name,
-      latitude,
-      longitude,
-      radius,
       dueDate: format(selected, 'yyyy-MM-dd'),
-    })
+      reminderType,
+    };
+
+    if (needsLocation) {
+      task.latitude = latitude;
+      task.longitude = longitude;
+      task.radius = radius;
+    }
+
+    if (needsTime) {
+      task.remindAt = remindAt;
+    }
+
+    createTask(task)
       .then(() => {
         setName('');
         setLatitude(null);
         setLongitude(null);
         setRadius(200);
+        setRemindAt('');
         setRefreshKey(key => key + 1);
       })
       .catch(err => setError(err.message));
@@ -93,16 +128,50 @@ function App() {
               placeholder="What needs doing?"
             />
 
-            <MapPicker
-              latitude={latitude}
-              longitude={longitude}
-              radius={radius}
-              onPick={(lat, lon) => {
-                setLatitude(lat);
-                setLongitude(lon);
-              }}
-              onRadiusChange={setRadius}
-            />
+            <div className="inline-flex rounded-lg border border-stone-200 bg-white p-0.5">
+              {REMINDER_TYPES.map(type => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setReminderType(type.value)}
+                  className={
+                    'rounded-md px-4 py-1.5 text-sm transition-all duration-200 ' +
+                    (reminderType === type.value
+                      ? 'bg-stone-800 text-white'
+                      : 'text-stone-500 hover:text-stone-800')
+                  }
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+
+            {needsTime && (
+              <div>
+                <label className="mb-1.5 block text-xs text-stone-500">
+                  Remind me at
+                </label>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={remindAt}
+                  onChange={e => setRemindAt(e.target.value)}
+                />
+              </div>
+            )}
+
+            {needsLocation && (
+              <MapPicker
+                latitude={latitude}
+                longitude={longitude}
+                radius={radius}
+                onPick={(lat, lon) => {
+                  setLatitude(lat);
+                  setLongitude(lon);
+                }}
+                onRadiusChange={setRadius}
+              />
+            )}
 
             <button
               type="submit"

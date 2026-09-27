@@ -61,7 +61,16 @@ function Calendar({ selected, onSelect, refreshKey }) {
                            transition-shadow duration-200 hover:shadow-sm"
                             >
                                 <span className="text-sm text-stone-800">{task.name}</span>
-                                <span className="ml-2 text-xs text-stone-400">{task.radius}m</span>
+                                {task.remindAt && (
+                                    <span className="ml-2 text-xs text-stone-400">
+                                        {task.remindAt.slice(0, 5)}
+                                    </span>
+                                )}
+                                {task.radius != null && (
+                                    <span className="ml-2 text-xs text-stone-400">
+                                        {task.radius}m
+                                    </span>
+                                )}
                             </li>
                         ))}
                     </ul>
