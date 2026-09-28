@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getNearbyTasks } from './api';
 
 // Distance in metres between two points on the globe. The same Haversine the
-// backend uses to decide what counts as nearby — repeated here only so the list
-// can say how far away something is.
+// backend uses to decide what counts as nearby — repeated here only to show how
+// far away something is, and to ignore tiny GPS jitter.
 function distanceBetween(fromLat, fromLon, toLat, toLon) {
     const EARTH_RADIUS_METRES = 6371000;
     const toRadians = degrees => (degrees * Math.PI) / 180;
@@ -26,36 +26,89 @@ const GEOLOCATION_ERRORS = {
     3: 'Finding your location took too long.',
 };
 
+// GPS wobbles by a few metres even when still. Refetching on every wobble would
+// hammer the API for nothing, so ignore movement smaller than this.
+const SIGNIFICANT_MOVE_METRES = 25;
+
 function NearMe({ refreshKey, onOpen }) {
     const [coords, setCoords] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [status, setStatus] = useState('idle');
     const [error, setError] = useState('');
+    const [watching, setWatching] = useState(false);
 
-    const locate = () => {
+    // Refs, not state: changing these should never cause a render.
+    const watchId = useRef(null);
+    const lastFix = useRef(null);
+    const alreadyAnnounced = useRef(null);
+
+    const stop = () => {
+        if (watchId.current !== null) {
+            navigator.geolocation.clearWatch(watchId.current);
+            watchId.current = null;
+        }
+        setWatching(false);
+    };
+
+    const start = () => {
         if (!navigator.geolocation) {
             setError('This browser cannot report your location.');
             setStatus('error');
             return;
         }
 
+        // Ask once, up front. Browsers ignore this unless a click triggered it.
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         setStatus('locating');
         setError('');
+        setWatching(true);
 
-        navigator.geolocation.getCurrentPosition(
-            position =>
-                setCoords({
+        watchId.current = navigator.geolocation.watchPosition(
+            position => {
+                const next = {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                }),
+                };
+
+                const previous = lastFix.current;
+
+                // Only refetch once we've actually moved somewhere
+                if (
+                    previous &&
+                    distanceBetween(
+                        previous.latitude,
+                        previous.longitude,
+                        next.latitude,
+                        next.longitude,
+                    ) < SIGNIFICANT_MOVE_METRES
+                ) {
+                    return;
+                }
+
+                lastFix.current = next;
+                setCoords(next);
+            },
             failure => {
                 setError(GEOLOCATION_ERRORS[failure.code] ?? 'Could not get your location.');
                 setStatus('error');
+                stop();
             },
-            // A slightly stale fix is fine and much faster than insisting on a new one
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
         );
     };
+
+    // Stop watching if the component ever goes away, so the GPS isn't left on.
+    useEffect(() => {
+        return () => {
+            if (watchId.current !== null) {
+                navigator.geolocation.clearWatch(watchId.current);
+                watchId.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!coords) return;
@@ -65,6 +118,33 @@ function NearMe({ refreshKey, onOpen }) {
         getNearbyTasks(coords.latitude, coords.longitude)
             .then(result => {
                 if (!current) return;
+
+                if (alreadyAnnounced.current === null) {
+                    alreadyAnnounced.current = new Set();
+                }
+
+                const announced = alreadyAnnounced.current;
+
+                // Anything that wasn't in range last time has just come into range
+                result
+                    .filter(task => !announced.has(task.id))
+                    .forEach(task => {
+                        announced.add(task.id);
+
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            new Notification(task.name, {
+                                body: 'You are near this one.',
+                                tag: `caltal-task-${task.id}`,
+                            });
+                        }
+                    });
+
+                // Forget anything now out of range, so it can announce again later
+                const inRange = new Set(result.map(task => task.id));
+                announced.forEach(id => {
+                    if (!inRange.has(id)) announced.delete(id);
+                });
+
                 setTasks(result);
                 setStatus('ready');
             })
@@ -86,27 +166,32 @@ function NearMe({ refreshKey, onOpen }) {
                     Near me
                 </h2>
 
-                {status !== 'idle' && (
+                {watching && (
                     <button
                         type="button"
-                        onClick={locate}
-                        className="text-xs text-stone-400 underline underline-offset-2
+                        onClick={stop}
+                        className="flex items-center gap-1.5 text-xs text-stone-400
                                    transition-colors hover:text-stone-600"
                     >
-                        Refresh
+                        <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping
+                                             rounded-full bg-stone-400 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-stone-500" />
+                        </span>
+                        Stop
                     </button>
                 )}
             </div>
 
-            {status === 'idle' && (
+            {!watching && status !== 'error' && (
                 <button
                     type="button"
-                    onClick={locate}
+                    onClick={start}
                     className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5
                                text-sm text-stone-600 transition-all duration-200
                                hover:border-stone-300 hover:text-stone-900 active:scale-[0.99]"
                 >
-                    Check what&rsquo;s around me
+                    Watch for tasks around me
                 </button>
             )}
 
@@ -114,7 +199,19 @@ function NearMe({ refreshKey, onOpen }) {
                 <p className="text-sm text-stone-400">Finding you…</p>
             )}
 
-            {status === 'error' && <p className="text-sm text-red-600">{error}</p>}
+            {status === 'error' && (
+                <div>
+                    <p className="text-sm text-red-600">{error}</p>
+                    <button
+                        type="button"
+                        onClick={start}
+                        className="mt-2 text-xs text-stone-500 underline underline-offset-2
+                                   transition-colors hover:text-stone-800"
+                    >
+                        Try again
+                    </button>
+                </div>
+            )}
 
             {status === 'ready' &&
                 (tasks.length === 0 ? (

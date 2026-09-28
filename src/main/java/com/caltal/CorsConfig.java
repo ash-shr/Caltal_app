@@ -14,8 +14,12 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:5173")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE");
+                        // localhost for `npm run dev`; the deployed origin is only
+                        // needed as a backstop, since the app is served from the
+                        // same origin in production.
+                        .allowedOrigins("http://localhost:5173", "https://caltal.fly.dev")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE")
+                        .allowedHeaders("*");
             }
         };
     }
