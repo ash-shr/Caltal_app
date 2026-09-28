@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import Calendar from './Calendar';
 import TaskList from './TaskList';
+import NearMe from './NearMe';
 import TaskForm from './TaskForm';
 import TaskDetail from './TaskDetail';
 import Auth from './Auth';
@@ -61,6 +62,8 @@ function App() {
           />
 
           <aside className="space-y-10">
+            <NearMe refreshKey={refreshKey} onOpen={setOpenTask} />
+
             <TaskList
               selected={selected}
               refreshKey={refreshKey}

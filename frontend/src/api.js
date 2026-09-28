@@ -106,3 +106,7 @@ export function updateTask(id, task) {
     body: JSON.stringify(task),
   });
 }
+
+export function getNearbyTasks(latitude, longitude) {
+  return request(`${BASE_URL}/tasks/nearby?lat=${latitude}&lon=${longitude}`);
+}
