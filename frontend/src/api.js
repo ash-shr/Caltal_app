@@ -99,3 +99,10 @@ export function completeTask(id) {
 export function deleteTask(id) {
   return request(`${BASE_URL}/tasks/${id}`, { method: 'DELETE' });
 }
+
+export function updateTask(id, task) {
+  return request(`${BASE_URL}/tasks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(task),
+  });
+}

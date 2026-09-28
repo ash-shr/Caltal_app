@@ -50,7 +50,10 @@ function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
 
   return (
     <div className="space-y-3">
-      <div className="h-64 overflow-hidden rounded-xl border border-stone-200">
+      {/* isolate creates a stacking context, so Leaflet's internal z-indexes
+          (panes ~400, controls ~800) stay inside the map instead of painting
+          over things above it on the page, such as the detail panel backdrop. */}
+      <div className="isolate h-64 overflow-hidden rounded-xl border border-stone-200">
         <MapContainer
           center={centre}
           zoom={13}

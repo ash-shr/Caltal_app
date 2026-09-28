@@ -2,87 +2,27 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import Calendar from './Calendar';
 import TaskList from './TaskList';
-import MapPicker from './MapPicker';
+import TaskForm from './TaskForm';
+import TaskDetail from './TaskDetail';
 import Auth from './Auth';
 import { createTask, getStoredUser, clearSession } from './api';
-
-// The three reminder kinds the backend accepts, with the labels we show.
-const REMINDER_TYPES = [
-  { value: 'LOCATION', label: 'Place' },
-  { value: 'TIME', label: 'Time' },
-  { value: 'BOTH', label: 'Both' },
-];
 
 function App() {
   const [user, setUser] = useState(getStoredUser());
 
   const [selected, setSelected] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [openTask, setOpenTask] = useState(null);
 
-  const [name, setName] = useState('');
-  const [reminderType, setReminderType] = useState('LOCATION');
-  const [latitude, setLatitude] = useState(null);
-  const [longitude, setLongitude] = useState(null);
-  const [radius, setRadius] = useState(200);
-  const [remindAt, setRemindAt] = useState('');
-  const [error, setError] = useState('');
+  // Bumping this remounts the new-task form, which is how it gets cleared.
+  const [formKey, setFormKey] = useState(0);
 
-  const needsLocation = reminderType === 'LOCATION' || reminderType === 'BOTH';
-  const needsTime = reminderType === 'TIME' || reminderType === 'BOTH';
+  const refresh = () => setRefreshKey(key => key + 1);
 
   const handleSignOut = () => {
     clearSession();
     setUser(null);
   };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setError('');
-
-    // Catch the obvious mistakes here rather than making a round trip for them.
-    if (needsLocation && (latitude === null || longitude === null)) {
-      setError('Pick a place on the map.');
-      return;
-    }
-    if (needsTime && !remindAt) {
-      setError('Choose a time.');
-      return;
-    }
-
-    // The backend rejects a task carrying fields its type does not allow,
-    // so only send the ones this type needs.
-    const task = {
-      name,
-      dueDate: format(selected, 'yyyy-MM-dd'),
-      reminderType,
-    };
-
-    if (needsLocation) {
-      task.latitude = latitude;
-      task.longitude = longitude;
-      task.radius = radius;
-    }
-
-    if (needsTime) {
-      task.remindAt = remindAt;
-    }
-
-    createTask(task)
-      .then(() => {
-        setName('');
-        setLatitude(null);
-        setLongitude(null);
-        setRadius(200);
-        setRemindAt('');
-        setRefreshKey(key => key + 1);
-      })
-      .catch(err => setError(err.message));
-  };
-
-  const inputClass =
-    'w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm ' +
-    'text-stone-800 placeholder:text-stone-400 transition-colors duration-200 ' +
-    'focus:border-stone-400 focus:outline-none';
 
   if (!user) {
     return <Auth onAuthenticated={setUser} />;
@@ -114,13 +54,18 @@ function App() {
             stacks beneath it on a narrow one. */}
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
 
-          <Calendar selected={selected} onSelect={setSelected} refreshKey={refreshKey} />
+          <Calendar
+            selected={selected}
+            onSelect={setSelected}
+            refreshKey={refreshKey}
+          />
 
           <aside className="space-y-10">
             <TaskList
               selected={selected}
               refreshKey={refreshKey}
-              onChanged={() => setRefreshKey(key => key + 1)}
+              onChanged={refresh}
+              onOpen={setOpenTask}
             />
 
             <section>
@@ -128,76 +73,28 @@ function App() {
                 New task on {format(selected, 'd MMMM')}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <input
-                  className={inputClass}
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="What needs doing?"
-                />
-
-                <div className="inline-flex rounded-xl border border-stone-200 bg-white p-0.5">
-                  {REMINDER_TYPES.map(type => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setReminderType(type.value)}
-                      className={
-                        'rounded-lg px-4 py-1.5 text-sm transition-all duration-200 ' +
-                        (reminderType === type.value
-                          ? 'bg-stone-800 text-white'
-                          : 'text-stone-500 hover:text-stone-800')
-                      }
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-
-                {needsTime && (
-                  <div>
-                    <label className="mb-1.5 block text-xs text-stone-500">
-                      Remind me at
-                    </label>
-                    <input
-                      type="time"
-                      className={inputClass}
-                      value={remindAt}
-                      onChange={e => setRemindAt(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {needsLocation && (
-                  <MapPicker
-                    latitude={latitude}
-                    longitude={longitude}
-                    radius={radius}
-                    onPick={(lat, lon) => {
-                      setLatitude(lat);
-                      setLongitude(lon);
-                    }}
-                    onRadiusChange={setRadius}
-                  />
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-stone-800 px-4 py-2.5 text-sm font-medium text-white
-                             transition-all duration-200 hover:bg-stone-700 active:scale-[0.98]"
-                >
-                  Add task
-                </button>
-              </form>
-
-              {error && (
-                <p className="mt-3 text-sm text-red-600">{error}</p>
-              )}
+              <TaskForm
+                key={formKey}
+                dueDate={selected}
+                submitLabel="Add task"
+                onSubmit={payload =>
+                  createTask(payload).then(() => {
+                    setFormKey(key => key + 1);
+                    refresh();
+                  })
+                }
+              />
             </section>
           </aside>
 
         </div>
       </div>
+
+      <TaskDetail
+        task={openTask}
+        onClose={() => setOpenTask(null)}
+        onChanged={refresh}
+      />
     </div>
   );
 }

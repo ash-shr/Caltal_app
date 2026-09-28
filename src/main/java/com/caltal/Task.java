@@ -61,6 +61,21 @@ public class Task {
         validateReminderType();
     }
 
+    // Applies a complete new set of details. Validation runs afterwards, exactly
+    // as it does in the constructor, so a task can never be edited into an
+    // invalid state (a TIME task holding coordinates, say).
+    public void update(String name, LocalDate dueDate, ReminderType reminderType,
+            Double latitude, Double longitude, Integer radius, LocalTime remindAt) {
+        setName(name);
+        setDueDate(dueDate);
+        setReminderType(reminderType);
+        setLatitude(latitude);
+        setLongitude(longitude);
+        setRadius(radius);
+        setRemindAt(remindAt);
+        validateReminderType();
+    }
+
     public LocalDate getDueDate() {
         return dueDate;
     }

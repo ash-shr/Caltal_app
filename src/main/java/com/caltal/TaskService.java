@@ -48,6 +48,26 @@ public class TaskService {
         return task;
     }
 
+    public Task updateTask(User owner, Long id, CreateTaskRequest details) {
+        if (details == null) {
+            throw new IllegalArgumentException("Details must not be null");
+        }
+
+        Task task = findOwnedTask(owner, id);
+
+        task.update(
+                details.getName(),
+                details.getDueDate(),
+                details.getReminderType(),
+                details.getLatitude(),
+                details.getLongitude(),
+                details.getRadius(),
+                details.getRemindAt());
+
+        repository.save(task);
+        return task;
+    }
+
     public void deleteTask(User owner, Long id) {
         repository.delete(findOwnedTask(owner, id));
     }

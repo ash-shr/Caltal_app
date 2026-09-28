@@ -22,6 +22,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -197,5 +198,30 @@ class TaskControllerTest {
 
         mockMvc.perform(delete("/api/tasks/99").with(csrf()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void updatingATaskReturnsTheNewVersion() throws Exception {
+        Task task = new Task("buy oat milk", 53.7960, -1.5450, 300, today, owner);
+        when(currentUser.get()).thenReturn(owner);
+        when(service.updateTask(any(), eq(1L), any())).thenReturn(task);
+
+        mockMvc.perform(put("/api/tasks/1")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "name": "buy oat milk",
+                          "dueDate": "2026-09-21",
+                          "reminderType": "LOCATION",
+                          "latitude": 53.7960,
+                          "longitude": -1.5450,
+                          "radius": 300
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("buy oat milk"))
+                .andExpect(jsonPath("$.radius").value(300));
     }
 }

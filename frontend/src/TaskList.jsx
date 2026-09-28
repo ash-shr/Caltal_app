@@ -5,7 +5,7 @@ import { getTasksOnDate, completeTask, deleteTask } from './api';
 // Shows whatever is scheduled on the selected day, and lets a task be completed
 // or removed. onChanged tells App something happened, so the calendar dots and
 // this list both refetch.
-function TaskList({ selected, refreshKey, onChanged }) {
+function TaskList({ selected, refreshKey, onChanged, onOpen }) {
     // What we're currently showing, tagged with the request it came from.
     const [loaded, setLoaded] = useState({ key: null, tasks: [] });
     const [error, setError] = useState('');
@@ -102,16 +102,18 @@ function TaskList({ selected, refreshKey, onChanged }) {
                             </button>
 
                             <div className="min-w-0 flex-1">
-                                <p
+                                <button
+                                    type="button"
+                                    onClick={() => onOpen(task)}
                                     className={
-                                        'text-sm transition-colors duration-200 ' +
+                                        'block w-full truncate text-left text-sm transition-colors duration-200 ' +
                                         (task.complete
                                             ? 'text-stone-400 line-through'
-                                            : 'text-stone-800')
+                                            : 'text-stone-800 hover:text-stone-950')
                                     }
                                 >
                                     {task.name}
-                                </p>
+                                </button>
 
                                 <div className="mt-1 flex items-center gap-3 text-xs text-stone-400">
                                     {task.remindAt && <span>{task.remindAt.slice(0, 5)}</span>}

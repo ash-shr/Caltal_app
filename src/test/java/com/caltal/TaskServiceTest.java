@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -159,5 +160,77 @@ class TaskServiceTest {
         Task task = new Task("new thing", 53.7960, -1.5450, 200, today, owner);
 
         assertFalse(task.isComplete());
+    }
+
+    private CreateTaskRequest detailsFor(String name, ReminderType type) {
+        CreateTaskRequest details = new CreateTaskRequest();
+        details.setName(name);
+        details.setDueDate(today);
+        details.setReminderType(type);
+        return details;
+    }
+
+    @Test
+    void updatesATaskTheUserOwns() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+        Task task = new Task("buy milk", 53.7960, -1.5450, 200, today, owner);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(task));
+
+        CreateTaskRequest details = detailsFor("buy oat milk", ReminderType.LOCATION);
+        details.setLatitude(53.8000);
+        details.setLongitude(-1.5500);
+        details.setRadius(300);
+
+        Task updated = service.updateTask(owner, 1L, details);
+
+        assertEquals("buy oat milk", updated.getName());
+        assertEquals(300, updated.getRadius());
+        verify(repository).save(task);
+    }
+
+    @Test
+    void changingAnEditedTaskToTimeClearsItsLocation() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+        Task task = new Task("buy milk", 53.7960, -1.5450, 200, today, owner);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(task));
+
+        CreateTaskRequest details = detailsFor("buy milk", ReminderType.TIME);
+        details.setRemindAt(java.time.LocalTime.of(9, 0));
+
+        Task updated = service.updateTask(owner, 1L, details);
+
+        assertNull(updated.getLatitude());
+        assertNull(updated.getRadius());
+        assertEquals(java.time.LocalTime.of(9, 0), updated.getRemindAt());
+    }
+
+    @Test
+    void refusesToEditATaskIntoAnInvalidState() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+        Task task = new Task("buy milk", 53.7960, -1.5450, 200, today, owner);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(task));
+
+        // TIME with no time on it
+        CreateTaskRequest details = detailsFor("buy milk", ReminderType.TIME);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateTask(owner, 1L, details));
+    }
+
+    @Test
+    void refusesToEditATaskTheUserDoesNotOwn() {
+        TaskRepository repository = mock(TaskRepository.class);
+        TaskService service = new TaskService(repository);
+
+        when(repository.findByIdAndOwner(1L, owner)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class,
+                () -> service.updateTask(owner, 1L, detailsFor("anything", ReminderType.TIME)));
     }
 }
