@@ -13,6 +13,9 @@ public class CreateTaskRequest {
     private LocalDate dueDate;
     private ReminderType reminderType;
     private LocalTime remindAt;
+    private Double triggerLatitude;
+    private Double triggerLongitude;
+    private Integer triggerRadius;
 
     public LocalDate getDueDate(){
         return dueDate;
@@ -63,6 +66,30 @@ public class CreateTaskRequest {
 
     public LocalTime getRemindAt(){
         return remindAt;
+    }
+
+    public Double getTriggerLatitude(){
+        return triggerLatitude;
+    }
+
+    public void setTriggerLatitude(Double triggerLatitude){
+        this.triggerLatitude = triggerLatitude;
+    }
+
+    public Double getTriggerLongitude(){
+        return triggerLongitude;
+    }
+
+    public void setTriggerLongitude(Double triggerLongitude){
+        this.triggerLongitude = triggerLongitude;
+    }
+
+    public Integer getTriggerRadius(){
+        return triggerRadius;
+    }
+
+    public void setTriggerRadius(Integer triggerRadius){
+        this.triggerRadius = triggerRadius;
     }
 
     public void setRemindAt(LocalTime remindAt){

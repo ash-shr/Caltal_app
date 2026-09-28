@@ -60,6 +60,11 @@ public class TaskController {
                 request.getRadius(),
                 request.getRemindAt());
 
+        task.applyTrigger(
+                request.getTriggerLatitude(),
+                request.getTriggerLongitude(),
+                request.getTriggerRadius());
+
         service.addTask(task);
         return task;
     }

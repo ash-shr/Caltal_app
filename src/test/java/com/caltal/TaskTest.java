@@ -97,4 +97,50 @@ class TaskTest {
                     null, null, null, null);
         });
     }
+
+    @Test
+    void remindsAtTheTriggerPlaceWhenThereIsOne() {
+        User owner = new User("test@example.com", "hash", "Test User");
+        // The task is in Leeds city centre
+        Task task = new Task("post a letter", 53.7960, -1.5450, 100,
+                LocalDate.of(2026, 9, 21), owner);
+
+        // But remind me near Headingley, which is on my way
+        task.applyTrigger(53.8200, -1.5800, 300);
+
+        // Standing at the task itself is now not what fires it
+        assertFalse(task.isWithinRange(53.7960, -1.5450));
+
+        // Standing at the trigger place does
+        assertTrue(task.isWithinRange(53.8201, -1.5801));
+    }
+
+    @Test
+    void remindsAtTheTaskPlaceWhenThereIsNoTrigger() {
+        User owner = new User("test@example.com", "hash", "Test User");
+        Task task = new Task("post a letter", 53.7960, -1.5450, 100,
+                LocalDate.of(2026, 9, 21), owner);
+
+        assertTrue(task.isWithinRange(53.7961, -1.5451));
+    }
+
+    @Test
+    void rejectsAHalfFilledTriggerPlace() {
+        User owner = new User("test@example.com", "hash", "Test User");
+        Task task = new Task("post a letter", 53.7960, -1.5450, 100,
+                LocalDate.of(2026, 9, 21), owner);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> task.applyTrigger(53.8200, null, 300));
+    }
+
+    @Test
+    void rejectsATriggerPlaceOnATimeOnlyTask() {
+        User owner = new User("test@example.com", "hash", "Test User");
+        Task task = new Task("ring the dentist", LocalDate.of(2026, 9, 21), owner,
+                ReminderType.TIME, null, null, null, LocalTime.of(9, 0));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> task.applyTrigger(53.8200, -1.5800, 300));
+    }
 }

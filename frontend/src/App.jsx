@@ -6,6 +6,7 @@ import NearMe from './NearMe';
 import TaskForm from './TaskForm';
 import TaskDetail from './TaskDetail';
 import Auth from './Auth';
+import Profile from './Profile';
 import { createTask, getStoredUser, clearSession } from './api';
 
 function App() {
@@ -39,16 +40,7 @@ function App() {
             <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
           </div>
 
-          <div className="text-right">
-            <p className="text-sm text-stone-600">{user.name}</p>
-            <button
-              onClick={handleSignOut}
-              className="mt-1 text-xs text-stone-400 underline underline-offset-2
-                         transition-colors hover:text-stone-600"
-            >
-              Sign out
-            </button>
-          </div>
+          <Profile user={user} onSignOut={handleSignOut} />
         </header>
 
         {/* Calendar leads; everything else sits beside it on a wide screen and

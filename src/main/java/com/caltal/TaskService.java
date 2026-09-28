@@ -64,6 +64,11 @@ public class TaskService {
                 details.getRadius(),
                 details.getRemindAt());
 
+        task.applyTrigger(
+                details.getTriggerLatitude(),
+                details.getTriggerLongitude(),
+                details.getTriggerRadius());
+
         repository.save(task);
         return task;
     }

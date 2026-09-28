@@ -34,6 +34,13 @@ public class Task {
     private ReminderType reminderType;
     private LocalTime remindAt;
 
+    // Where you want to be told about this task, when that is somewhere other
+    // than the task itself. "Remind me about the post office as I leave work",
+    // rather than reminding me once I am already at the post office.
+    private Double triggerLatitude;
+    private Double triggerLongitude;
+    private Integer triggerRadius;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     @JsonIgnore
@@ -84,22 +91,42 @@ public class Task {
         return id;
     }
 
+    // The place that actually fires the reminder: the trigger if one is set,
+    // otherwise the task's own location.
+    public Double getReminderLatitude() {
+        return triggerLatitude != null ? triggerLatitude : latitude;
+    }
+
+    public Double getReminderLongitude() {
+        return triggerLongitude != null ? triggerLongitude : longitude;
+    }
+
+    public Integer getReminderRadius() {
+        return triggerRadius != null ? triggerRadius : radius;
+    }
+
     public boolean isWithinRange(double userLatitude, double userLongitude) {
-        if (latitude == null || longitude == null || radius == null) {
+        Double reminderLatitude = getReminderLatitude();
+        Double reminderLongitude = getReminderLongitude();
+        Integer reminderRadius = getReminderRadius();
+
+        if (reminderLatitude == null || reminderLongitude == null || reminderRadius == null) {
             return false;
         }
-        double distance = distanceTo(userLatitude, userLongitude);
-        return distance <= radius;
+
+        return distanceTo(reminderLatitude, reminderLongitude, userLatitude, userLongitude)
+                <= reminderRadius;
     }
 
     private static final double EARTH_RADIUS_METRES = 6_371_000.0;
 
-    private double distanceTo(double userLatitude, double userLongitude) {
-        double taskLatitudeRadians = Math.toRadians(latitude);
+    private double distanceTo(double fromLatitude, double fromLongitude,
+            double userLatitude, double userLongitude) {
+        double taskLatitudeRadians = Math.toRadians(fromLatitude);
         double userLatitudeRadians = Math.toRadians(userLatitude);
 
-        double latitudeDifference = Math.toRadians(userLatitude - this.latitude);
-        double longitudeDifference = Math.toRadians(userLongitude - this.longitude);
+        double latitudeDifference = Math.toRadians(userLatitude - fromLatitude);
+        double longitudeDifference = Math.toRadians(userLongitude - fromLongitude);
 
         double halfLatitudeSine = Math.sin(latitudeDifference / 2);
         double halfLongitudeSine = Math.sin(longitudeDifference / 2);
@@ -135,6 +162,50 @@ public class Task {
 
     public User getOwner() {
         return owner;
+    }
+
+    public Double getTriggerLatitude() {
+        return triggerLatitude;
+    }
+
+    public Double getTriggerLongitude() {
+        return triggerLongitude;
+    }
+
+    public Integer getTriggerRadius() {
+        return triggerRadius;
+    }
+
+    // All three together or none at all, and only on a task that has a place.
+    public void applyTrigger(Double latitude, Double longitude, Integer radius) {
+        boolean anyPresent = latitude != null || longitude != null || radius != null;
+        boolean allPresent = latitude != null && longitude != null && radius != null;
+
+        if (anyPresent && !allPresent) {
+            throw new IllegalArgumentException(
+                    "A reminder place needs a latitude, a longitude and a radius");
+        }
+
+        if (anyPresent && reminderType == ReminderType.TIME) {
+            throw new IllegalArgumentException(
+                    "A time-only task cannot have a reminder place");
+        }
+
+        if (radius != null && radius <= 0) {
+            throw new IllegalArgumentException("Radius must be positive");
+        }
+
+        if (latitude != null && (latitude < -90 || latitude > 90)) {
+            throw new IllegalArgumentException("Latitude must be between -90 and 90");
+        }
+
+        if (longitude != null && (longitude < -180 || longitude > 180)) {
+            throw new IllegalArgumentException("Longitude must be between -180 and 180");
+        }
+
+        this.triggerLatitude = latitude;
+        this.triggerLongitude = longitude;
+        this.triggerRadius = radius;
     }
 
     public ReminderType getReminderType() {
