@@ -1,6 +1,8 @@
 target/
-frontend/
+frontend/node_modules/
+frontend/dist/
 data/
 .git/
 .github/
 *.md
+frontend/.env.local
