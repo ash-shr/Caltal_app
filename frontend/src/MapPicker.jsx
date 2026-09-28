@@ -3,6 +3,10 @@ import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-lea
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+// Restricted to caltal.fly.dev and localhost in the MapTiler dashboard, so it
+// being visible in the bundle is expected rather than a leak.
+const MAP_KEY = import.meta.env.VITE_MAP_KEY;
+
 // Leaflet's default marker images don't survive bundling, so point at a CDN copy
 const icon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -61,11 +65,13 @@ function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
           scrollWheelZoom={false}
         >
           <TileLayer
-            // Esri World Light Gray Canvas. Pale and quiet, and still free
-            // without an API key — Stadia and CARTO both now require one.
-            // Note the tile path is {z}/{y}/{x}, not the usual {z}/{x}/{y}.
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-            attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+            url={`https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=${MAP_KEY}`}
+            attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            // MapTiler serves 512px tiles; Leaflet assumes 256px, so it needs
+            // telling, and the zoom offset keeps the scale honest.
+            tileSize={512}
+            zoomOffset={-1}
+            maxZoom={20}
           />
 
           <ClickHandler onPick={onPick} />
