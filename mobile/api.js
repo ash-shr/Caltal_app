@@ -86,3 +86,7 @@ export function getTasksOnDate(date) {
 export function getNearbyTasks(latitude, longitude) {
   return request(`${BASE_URL}/tasks/nearby?lat=${latitude}&lon=${longitude}`);
 }
+
+export function getAllTasks() {
+  return request(`${BASE_URL}/tasks`);
+}

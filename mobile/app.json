@@ -1,27 +1,61 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Caltal",
+    "slug": "caltal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ashshr.caltal",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Caltal uses your location to remind you about tasks when you arrive somewhere.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Caltal watches for the places you have pinned tasks to, so it can remind you even when the app is closed.",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
     },
     "android": {
+      "package": "com.ashshr.caltal",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Caltal watches for the places you have pinned tasks to, so it can remind you even when the app is closed.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fc2078ac-8854-4c1c-9e6e-725f095a2017"
+      }
+    }
   }
 }

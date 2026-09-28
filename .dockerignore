@@ -6,3 +6,4 @@ data/
 .github/
 *.md
 frontend/.env.local
+mobile/

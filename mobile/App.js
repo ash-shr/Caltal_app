@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native';
 import Auth from './Auth';
 import TaskList from './TaskList';
+import PlaceWatcher from './PlaceWatcher';
 import { getStoredUser, clearSession } from './api';
 
 export default function App() {
@@ -52,6 +53,8 @@ export default function App() {
           <Text style={styles.signOut}>Sign out</Text>
         </Pressable>
       </View>
+
+      <PlaceWatcher />
 
       <TaskList />
 
