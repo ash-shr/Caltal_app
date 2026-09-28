@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import Calendar from './Calendar';
 import TaskList from './TaskList';
@@ -6,11 +6,17 @@ import NearMe from './NearMe';
 import TaskForm from './TaskForm';
 import TaskDetail from './TaskDetail';
 import Auth from './Auth';
+import Splash from './Splash';
 import Profile from './Profile';
 import { createTask, getStoredUser, clearSession } from './api';
 
+// How long the splash stays up at minimum. Long enough to read as deliberate
+// rather than a flicker, short enough not to be in the way.
+const SPLASH_MS = 1400;
+
 function App() {
   const [user, setUser] = useState(getStoredUser());
+  const [booting, setBooting] = useState(true);
 
   const [selected, setSelected] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
@@ -21,10 +27,20 @@ function App() {
 
   const refresh = () => setRefreshKey(key => key + 1);
 
+  // Every reload starts on the splash, the way an app does.
+  useEffect(() => {
+    const timer = setTimeout(() => setBooting(false), SPLASH_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleSignOut = () => {
     clearSession();
     setUser(null);
   };
+
+  if (booting) {
+    return <Splash />;
+  }
 
   if (!user) {
     return <Auth onAuthenticated={setUser} />;
@@ -35,9 +51,16 @@ function App() {
       <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
 
         <header className="mb-10 flex items-start justify-between sm:mb-14">
-          <div>
-            <h1 className="text-2xl font-medium tracking-tight">Caltal</h1>
-            <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt=""
+              className="h-20 w-20"
+            />
+            <div>
+              <h1 className="text-2xl font-medium tracking-tight">Caltal</h1>
+              <p className="mt-0.5 text-sm text-stone-500">Tasks that find you</p>
+            </div>
           </div>
 
           <Profile user={user} onSignOut={handleSignOut} />

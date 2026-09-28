@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { getTasksOnDate, completeTask, deleteTask } from './api';
+import Loading from './Loading';
 
 // Shows whatever is scheduled on the selected day, and lets a task be completed
 // or removed. onChanged tells App something happened, so the calendar dots and
@@ -59,7 +60,7 @@ function TaskList({ selected, refreshKey, onChanged, onOpen }) {
             {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
             {loading ? (
-                <p className="mt-4 text-sm text-stone-300">Loading…</p>
+                <Loading size={56} />
             ) : loaded.tasks.length === 0 ? (
                 <p className="mt-4 text-sm text-stone-400">Nothing scheduled.</p>
             ) : (

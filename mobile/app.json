@@ -20,10 +20,8 @@
     "android": {
       "package": "com.ashshr.caltal",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-foreground.png",
+        "backgroundColor": "#fafaf9"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -50,7 +48,16 @@
           "isAndroidBackgroundLocationEnabled": true
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#fafaf9"
+        }
+      ]
     ],
     "extra": {
       "eas": {

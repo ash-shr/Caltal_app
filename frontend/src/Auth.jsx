@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { login, register } from './api';
+import Splash from './Splash';
 
 function Auth({ onAuthenticated }) {
   const [mode, setMode] = useState('login');
@@ -36,9 +37,17 @@ function Auth({ onAuthenticated }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-stone-50 px-6">
+      <Splash label="Signing you in…" visible={busy} />
+
       <div className="w-full max-w-sm">
 
         <div className="mb-10 text-center">
+          <img
+            src="/logo.png"
+            alt=""
+            className="mx-auto mb-5 h-36 w-36"
+            draggable="false"
+          />
           <h1 className="text-2xl font-medium tracking-tight text-stone-800">Caltal</h1>
           <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
         </div>

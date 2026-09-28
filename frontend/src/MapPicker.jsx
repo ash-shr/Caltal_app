@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react';
+import { memo } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -16,6 +16,9 @@ const icon = L.icon({
   iconAnchor: [12, 41],
 });
 
+const TASK_COLOUR = '#292524';
+const TRIGGER_COLOUR = '#0d9488';
+
 function ClickHandler({ onPick }) {
   useMapEvents({
     click(event) {
@@ -26,99 +29,74 @@ function ClickHandler({ onPick }) {
   return null;
 }
 
-function MapPicker({ latitude, longitude, radius, onPick, onRadiusChange }) {
-  // A handle on the Leaflet circle itself, and on the label element, so a drag
-  // can update both directly instead of going through a React render.
-  const circleRef = useRef(null);
-  const labelRef = useRef(null);
-
-  const handleDrag = (event) => {
-    const next = Number(event.target.value);
-
-    if (circleRef.current) {
-      circleRef.current.setRadius(next);
-    }
-    if (labelRef.current) {
-      labelRef.current.textContent = `${next}m`;
-    }
-  };
-
-  // React only learns the value once the drag finishes. In React, onChange on an
-  // input fires on every movement, so the commit has to hang off release events.
-  const handleCommit = (event) => {
-    onRadiusChange(Number(event.target.value));
-  };
-
-  const hasPosition = latitude !== null && longitude !== null;
-  const centre = hasPosition ? [latitude, longitude] : [53.8008, -1.5491];
+// A pin with its radius drawn around it.
+function Place({ point, colour }) {
+  if (point.latitude === null || point.longitude === null) return null;
 
   return (
-    <div className="space-y-3">
-      {/* isolate creates a stacking context, so Leaflet's internal z-indexes
-          (panes ~400, controls ~800) stay inside the map instead of painting
-          over things above it on the page, such as the detail panel backdrop. */}
-      <div className="isolate h-64 overflow-hidden rounded-xl border border-stone-200">
-        <MapContainer
-          center={centre}
-          zoom={13}
-          className="h-full w-full"
-          scrollWheelZoom={false}
-        >
-          <TileLayer
-            url={`https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=${MAP_KEY}`}
-            attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            // MapTiler serves 512px tiles; Leaflet assumes 256px, so it needs
-            // telling, and the zoom offset keeps the scale honest.
-            tileSize={512}
-            zoomOffset={-1}
-            maxZoom={20}
-          />
+    <>
+      <Marker position={[point.latitude, point.longitude]} icon={icon} />
+      <Circle
+        center={[point.latitude, point.longitude]}
+        radius={point.radius}
+        pathOptions={{
+          color: colour,
+          fillColor: colour,
+          fillOpacity: 0.08,
+          weight: 1,
+        }}
+      />
+    </>
+  );
+}
 
-          <ClickHandler onPick={onPick} />
+// `task` is where the task is. `trigger` is the optional second place to be
+// reminded at. Which of them a click moves is decided by the parent, which is
+// what onPick does with the coordinates.
+function MapPicker({ task, trigger, onPick, expanded, onExpand }) {
+  const centre =
+    task.latitude !== null
+      ? [task.latitude, task.longitude]
+      : [53.8008, -1.5491];
 
-          {hasPosition && (
-            <>
-              <Marker position={[latitude, longitude]} icon={icon} />
-              <Circle
-                ref={circleRef}
-                center={[latitude, longitude]}
-                radius={radius}
-                pathOptions={{
-                  color: '#292524',
-                  fillColor: '#292524',
-                  fillOpacity: 0.08,
-                  weight: 1,
-                }}
-              />
-            </>
-          )}
-        </MapContainer>
-      </div>
+  return (
+    <div
+      onClick={expanded ? undefined : onExpand}
+      className={
+        // isolate keeps Leaflet's internal z-indexes from painting over the
+        // detail panel and the profile menu.
+        'isolate overflow-hidden rounded-2xl border border-stone-200 ' +
+        'transition-all duration-500 ease-out ' +
+        (expanded ? 'h-80' : 'h-32 cursor-pointer hover:border-stone-300')
+      }
+    >
+      <MapContainer
+        center={centre}
+        zoom={expanded ? 14 : 12}
+        className="h-full w-full"
+        scrollWheelZoom={false}
+        dragging={expanded}
+        zoomControl={expanded}
+        doubleClickZoom={expanded}
+      >
+        <TileLayer
+          url={`https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=${MAP_KEY}`}
+          attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          // MapTiler serves 512px tiles; Leaflet assumes 256px, so it needs
+          // telling, and the zoom offset keeps the scale honest.
+          tileSize={512}
+          zoomOffset={-1}
+          maxZoom={20}
+        />
 
-      {hasPosition ? (
-        <div className="flex items-center gap-3">
-          <input
-            type="range"
-            min="50"
-            max="2000"
-            step="10"
-            key={radius}
-            defaultValue={radius}
-            onInput={handleDrag}
-            onMouseUp={handleCommit}
-            onTouchEnd={handleCommit}
-            onKeyUp={handleCommit}
-            className="flex-1 accent-stone-800"
-          />
-          <span ref={labelRef} className="w-16 text-right text-sm text-stone-500">
-            {radius}m
-          </span>
-        </div>
-      ) : (
-        <p className="text-sm text-stone-400">Click the map to set a location.</p>
-      )}
+        {expanded && <ClickHandler onPick={onPick} />}
+
+        <Place point={task} colour={TASK_COLOUR} />
+        {trigger && <Place point={trigger} colour={TRIGGER_COLOUR} />}
+      </MapContainer>
     </div>
   );
 }
 
 export default memo(MapPicker);
+export { TASK_COLOUR, TRIGGER_COLOUR };

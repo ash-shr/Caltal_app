@@ -37,16 +37,24 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
 // Hand the OS the list of circles to watch. Anything previously registered is
 // replaced, so this is safe to call whenever the task list changes.
 export async function watchPlaces(tasks) {
+  // A task can name a second place to be reminded at — somewhere on the way,
+  // rather than the task's own location. The backend works out which applies
+  // and exposes it as reminderLatitude / reminderLongitude / reminderRadius.
   const regions = tasks
-    .filter(task => !task.complete && task.latitude != null && task.longitude != null)
+    .filter(
+      task =>
+        !task.complete &&
+        task.reminderLatitude != null &&
+        task.reminderLongitude != null,
+    )
     .slice(0, MAX_REGIONS)
     .map(task => ({
       identifier: task.name,
-      latitude: task.latitude,
-      longitude: task.longitude,
+      latitude: task.reminderLatitude,
+      longitude: task.reminderLongitude,
       // A radius under ~100m is unreliable in practice: phone GPS is not that
       // precise, and the OS uses cell and wifi positioning to save battery.
-      radius: Math.max(task.radius ?? 200, 100),
+      radius: Math.max(task.reminderRadius ?? 200, 100),
       notifyOnEnter: true,
       notifyOnExit: false,
     }));
