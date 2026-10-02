@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { getTasksOnDate } from './api';
+import { syncTimeReminders } from './timeReminders';
 
 // toISOString() converts to UTC first, which in British Summer Time can roll the
 // date back a day. Build the string from local parts instead.
@@ -37,9 +38,11 @@ export default function TaskList() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  // Pulling to refresh also picks up timed tasks added on the website since the
+  // app was opened, and schedules their reminders.
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await Promise.all([load(), syncTimeReminders().catch(() => {})]);
     setRefreshing(false);
   };
 

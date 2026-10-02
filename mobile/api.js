@@ -73,7 +73,7 @@ export async function login(email, password) {
   const result = await request(`${BASE_URL}/auth/login`, {
     method: 'POST',
     body: JSON.stringify({ email, password }),
-  });
+  });  
 
   await storeSession(result);
   return result;
@@ -89,4 +89,14 @@ export function getNearbyTasks(latitude, longitude) {
 
 export function getAllTasks() {
   return request(`${BASE_URL}/tasks`);
+}
+
+// Revokes every token this account holds, on every device. The local copy is
+// cleared regardless, so the app is signed out even if the server can't be reached.
+export async function logout() {
+  try {
+    await request(`${BASE_URL}/auth/logout`, { method: 'POST' });
+  } finally {
+    await clearSession();
+  }
 }
