@@ -120,6 +120,14 @@ public class Task {
 
     private static final double EARTH_RADIUS_METRES = 6_371_000.0;
 
+    // Matches the VARCHAR(255) column. Checking here means an over-long name is a
+    // clear 400 rather than a database error surfacing as a 500.
+    static final int MAX_NAME_LENGTH = 255;
+
+    // 50km. Anything bigger isn't a place any more, and on phones it would also
+    // exceed what the OS geofencing APIs will reliably monitor.
+    static final int MAX_RADIUS_METRES = 50_000;
+
     private double distanceTo(double fromLatitude, double fromLongitude,
             double userLatitude, double userLongitude) {
         double taskLatitudeRadians = Math.toRadians(fromLatitude);
@@ -191,9 +199,7 @@ public class Task {
                     "A time-only task cannot have a reminder place");
         }
 
-        if (radius != null && radius <= 0) {
-            throw new IllegalArgumentException("Radius must be positive");
-        }
+        checkRadius(radius);
 
         if (latitude != null && (latitude < -90 || latitude > 90)) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90");
@@ -227,6 +233,10 @@ public class Task {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Name must not be empty");
         }
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Name must be " + MAX_NAME_LENGTH + " characters or fewer");
+        }
         this.name = name;
     }
 
@@ -245,10 +255,21 @@ public class Task {
     }
 
     public void setRadius(Integer radius) {
-        if (radius != null && radius <= 0) {
+        checkRadius(radius);
+        this.radius = radius;
+    }
+
+    private static void checkRadius(Integer radius) {
+        if (radius == null) {
+            return;
+        }
+        if (radius <= 0) {
             throw new IllegalArgumentException("Radius must be positive");
         }
-        this.radius = radius;
+        if (radius > MAX_RADIUS_METRES) {
+            throw new IllegalArgumentException(
+                    "Radius must be " + MAX_RADIUS_METRES + " metres or less");
+        }
     }
 
     public void setReminderType(ReminderType reminderType) {

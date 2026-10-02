@@ -143,4 +143,35 @@ class TaskTest {
         assertThrows(IllegalArgumentException.class,
                 () -> task.applyTrigger(53.8200, -1.5800, 300));
     }
+
+    @Test
+    void acceptsANameRightAtTheLengthLimit() {
+        Task task = new Task("x".repeat(255), 53.7960, -1.5450, 200,
+                LocalDate.of(2026, 9, 21), owner);
+
+        assertEquals(255, task.getName().length());
+    }
+
+    @Test
+    void rejectsANameLongerThanTheColumnCanHold() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Task("x".repeat(256), 53.7960, -1.5450, 200,
+                        LocalDate.of(2026, 9, 21), owner));
+    }
+
+    @Test
+    void rejectsARadiusTooLargeToBeAPlace() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Task("anywhere", 53.7960, -1.5450, 50_001,
+                        LocalDate.of(2026, 9, 21), owner));
+    }
+
+    @Test
+    void rejectsAnOversizedReminderPlaceToo() {
+        Task task = new Task("post a letter", 53.7960, -1.5450, 100,
+                LocalDate.of(2026, 9, 21), owner);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> task.applyTrigger(53.8200, -1.5800, 50_001));
+    }
 }

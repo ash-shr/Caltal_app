@@ -21,6 +21,8 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/caltal
       DB_USER: caltal
       DB_PASSWORD: caltal
+      # Local development only. Production reads JWT_SECRET from Fly's secret store.
+      JWT_SECRET: ${JWT_SECRET:-local-development-only-secret-do-not-use-anywhere-else}
     depends_on:
       postgres:
         condition: service_healthy

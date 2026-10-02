@@ -41,6 +41,10 @@ class TaskControllerTest {
     @MockitoBean
     private JwtService jwtService;
 
+    // JwtAuthFilter looks users up to check their token version
+    @MockitoBean
+    private UserRepository userRepository;
+
     private final User owner = new User("test@example.com", "hash", "Test User");
     private final LocalDate today = LocalDate.of(2026, 9, 21);
 

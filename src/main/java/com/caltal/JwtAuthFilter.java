@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,9 +18,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserRepository users;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -34,13 +37,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             try {
-                String email = jwtService.extractEmail(token);
+                JwtService.TokenClaims claims = jwtService.parse(token);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(email, null, List.of());
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } catch (Exception exception) {
+                // A valid signature isn't enough: the user must still exist, and
+                // must not have signed out since this token was issued.
+                users.findByEmail(claims.email())
+                        .filter(user -> user.getTokenVersion() == claims.version())
+                        .ifPresent(user -> SecurityContextHolder.getContext().setAuthentication(
+                                new UsernamePasswordAuthenticationToken(
+                                        user.getEmail(), null, List.of())));
+            } catch (JwtException | IllegalArgumentException exception) {
                 SecurityContextHolder.clearContext();
             }
         }

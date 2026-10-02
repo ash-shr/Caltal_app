@@ -7,3 +7,15 @@ target/
 data/
 frontend/node_modules/
 frontend/dist/
+
+# Deployment configs that have held credentials. Never commit these.
+task-definition.json
+*.env
+.env.*
+!frontend/.env.production
+
+# Build logs
+output.txt
+
+# Local Claude Code settings
+.claude/

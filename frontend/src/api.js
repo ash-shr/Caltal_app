@@ -67,6 +67,18 @@ export async function register(email, password, name) {
   return result;
 }
 
+// `credential` is the ID token Google's button hands us. The server checks it
+// with Google and replies with a normal Caltal session.
+export async function loginWithGoogle(credential) {
+  const result = await request(`${BASE_URL}/auth/google`, {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
+
+  storeSession(result);
+  return result;
+}
+
 export async function login(email, password) {
   const result = await request(`${BASE_URL}/auth/login`, {
     method: 'POST',
@@ -109,4 +121,15 @@ export function updateTask(id, task) {
 
 export function getNearbyTasks(latitude, longitude) {
   return request(`${BASE_URL}/tasks/nearby?lat=${latitude}&lon=${longitude}`);
+}
+
+// Revokes every token this account holds, on every device. The local copy is
+// cleared regardless — if the server can't be reached, the user still expects
+// to be signed out on this screen.
+export async function logout() {
+  try {
+    await request(`${BASE_URL}/auth/logout`, { method: 'POST' });
+  } finally {
+    clearSession();
+  }
 }

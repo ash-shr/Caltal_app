@@ -40,6 +40,11 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
+    <!-- Verifies Google's ID tokens against Google's published signing keys -->
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-oauth2-jose</artifactId>
+    </dependency>
 
     <dependency>
         <groupId>io.jsonwebtoken</groupId>

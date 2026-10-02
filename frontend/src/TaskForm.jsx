@@ -121,6 +121,7 @@ function TaskForm({ task, dueDate, submitLabel, showDate = false, onSubmit }) {
         value={name}
         onChange={e => setName(e.target.value)}
         onFocus={() => setOpen(true)}
+        maxLength={255}
         placeholder="What needs doing?"
       />
 

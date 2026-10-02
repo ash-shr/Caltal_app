@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { login, register } from './api';
+import { login, register, loginWithGoogle } from './api';
 import Splash from './Splash';
+import GoogleButton from './GoogleButton';
 
 function Auth({ onAuthenticated }) {
   const [mode, setMode] = useState('login');
@@ -30,6 +31,19 @@ function Auth({ onAuthenticated }) {
     }
   };
 
+  const handleGoogle = async (credential) => {
+    setError('');
+    setBusy(true);
+
+    try {
+      onAuthenticated(await loginWithGoogle(credential));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const inputClass =
     'w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm ' +
     'text-stone-800 placeholder:text-stone-400 transition-colors duration-200 ' +
@@ -52,6 +66,16 @@ function Auth({ onAuthenticated }) {
           <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
         </div>
 
+        <GoogleButton onCredential={handleGoogle} onError={setError} />
+
+        {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+          <div className="my-6 flex items-center gap-3 text-xs text-stone-400">
+            <span className="h-px flex-1 bg-stone-200" />
+            or with email
+            <span className="h-px flex-1 bg-stone-200" />
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           {isRegistering && (
             <input
@@ -59,6 +83,7 @@ function Auth({ onAuthenticated }) {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Your name"
+              maxLength={100}
               autoComplete="name"
             />
           )}
@@ -69,6 +94,7 @@ function Auth({ onAuthenticated }) {
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="Email"
+            maxLength={254}
             autoComplete="email"
           />
 
@@ -78,6 +104,8 @@ function Auth({ onAuthenticated }) {
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="Password"
+            minLength={isRegistering ? 8 : undefined}
+            maxLength={72}
             autoComplete={isRegistering ? 'new-password' : 'current-password'}
           />
 

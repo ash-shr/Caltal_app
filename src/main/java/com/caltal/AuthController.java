@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final CurrentUserService currentUser;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, CurrentUserService currentUser) {
         this.authService = authService;
+        this.currentUser = currentUser;
     }
 
     @PostMapping("/register")
@@ -32,9 +34,28 @@ public class AuthController {
         return authService.login(request.getEmail(), request.getPassword());
     }
 
+    @PostMapping("/google")
+    public AuthResponse loginWithGoogle(@RequestBody GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request.getCredential());
+    }
+
+    // Requires a valid token (see SecurityConfig), and revokes every token the
+    // user holds — not just the one that made this request.
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout() {
+        authService.logout(currentUser.get());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleInvalidRequest(IllegalArgumentException exception) {
+        return exception.getMessage();
+    }
+
+    @ExceptionHandler(SignInUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public String handleUnavailable(SignInUnavailableException exception) {
         return exception.getMessage();
     }
 

@@ -8,7 +8,7 @@ import TaskDetail from './TaskDetail';
 import Auth from './Auth';
 import Splash from './Splash';
 import Profile from './Profile';
-import { createTask, getStoredUser, clearSession } from './api';
+import { createTask, getStoredUser, logout } from './api';
 
 // How long the splash stays up at minimum. Long enough to read as deliberate
 // rather than a flicker, short enough not to be in the way.
@@ -34,8 +34,11 @@ function App() {
   }, []);
 
   const handleSignOut = () => {
-    clearSession();
-    setUser(null);
+    logout()
+      .catch(() => {
+        // Already signed out locally; nothing useful to show if the server missed it
+      })
+      .finally(() => setUser(null));
   };
 
   if (booting) {
