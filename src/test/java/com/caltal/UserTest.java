@@ -83,4 +83,14 @@ class UserTest {
         assertEquals("google-new", user.getGoogleSubject());
         assertEquals(0, user.getTokenVersion());
     }
+
+    @Test
+    void changingThePasswordEndsEveryExistingSession() {
+        User user = new User("ash@example.com", "old-hash", "Ash");
+
+        user.changePassword("new-hash");
+
+        assertEquals("new-hash", user.getPasswordHash());
+        assertEquals(1, user.getTokenVersion());
+    }
 }

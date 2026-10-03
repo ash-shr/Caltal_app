@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -26,6 +27,16 @@ class JwtServiceTest {
 
         assertEquals("ash@example.com", claims.email());
         assertEquals(1, claims.version());
+    }
+
+    @Test
+    void aTokenCarriesTheAccountId() {
+        JwtService jwt = new JwtService(SECRET, 24);
+        ReflectionTestUtils.setField(user, "id", 42L);
+
+        JwtService.TokenClaims claims = jwt.parse(jwt.generateToken(user));
+
+        assertEquals(Long.valueOf(42L), claims.userId());
     }
 
     @Test

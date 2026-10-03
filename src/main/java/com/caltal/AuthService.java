@@ -1,18 +1,10 @@
 package com.caltal;
 
-import java.nio.charset.StandardCharsets;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-
-    private static final int MIN_PASSWORD_LENGTH = 8;
-
-    // BCrypt only reads the first 72 bytes of a password. Anything past that is
-    // silently ignored, so a longer "password" is weaker than it looks.
-    private static final int MAX_PASSWORD_BYTES = 72;
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
@@ -38,7 +30,7 @@ public class AuthService {
     }
 
     public AuthResponse register(String email, String password, String name) {
-        validatePassword(password);
+        PasswordPolicy.check(password);
 
         String normalisedEmail = email == null ? null : email.toLowerCase().trim();
 
@@ -106,17 +98,6 @@ public class AuthService {
     public void logout(User user) {
         user.revokeTokens();
         users.save(user);
-    }
-
-    private void validatePassword(String password) {
-        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-            throw new IllegalArgumentException(
-                    "Password must be at least " + MIN_PASSWORD_LENGTH + " characters");
-        }
-
-        if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-            throw new IllegalArgumentException("Password is too long");
-        }
     }
 
     private AuthResponse respondWithToken(User user) {

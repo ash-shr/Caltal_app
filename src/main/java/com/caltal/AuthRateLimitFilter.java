@@ -14,11 +14,17 @@ import jakarta.servlet.http.HttpServletResponse;
 
 // Caps sign-in and sign-up attempts per client address. Without it, a password
 // can be guessed as fast as the server answers, and the sign-up endpoint can be
-// used to fill the database.
+// used to fill the database. Changing a password and deleting the account both
+// check the current password too, so they share the same budget.
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    private static final Set<String> LIMITED_PATHS = Set.of("/api/auth/login", "/api/auth/register", "/api/auth/google");
+    private static final Set<String> LIMITED = Set.of(
+            "POST /api/auth/login",
+            "POST /api/auth/register",
+            "POST /api/auth/google",
+            "PUT /api/me/password",
+            "DELETE /api/me");
 
     private final RateLimiter limiter;
 
@@ -30,8 +36,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equals(request.getMethod())
-                || !LIMITED_PATHS.contains(request.getRequestURI());
+        return !LIMITED.contains(request.getMethod() + " " + request.getRequestURI());
     }
 
     @Override

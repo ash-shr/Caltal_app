@@ -20,6 +20,11 @@ public class JwtService {
     // stop working — the only way to revoke a stateless token before it expires.
     static final String VERSION_CLAIM = "ver";
 
+    // The account's database id. An email can be reused — an account can be
+    // deleted and a new one made with the same address — but an id never is,
+    // so a token from the old account can't open the new one.
+    static final String USER_ID_CLAIM = "uid";
+
     // HS256 needs a 256-bit key. JJWT would reject a shorter one anyway, but with
     // an error that doesn't say what to do about it.
     private static final int MINIMUM_SECRET_BYTES = 32;
@@ -45,6 +50,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim(VERSION_CLAIM, user.getTokenVersion())
+                .claim(USER_ID_CLAIM, user.getId())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiryMillis))
                 .signWith(key)
@@ -62,12 +68,21 @@ public class JwtService {
 
         Integer version = claims.get(VERSION_CLAIM, Integer.class);
 
+        // JSON has one kind of number, so read the id as whatever number came back
+        Object rawId = claims.get(USER_ID_CLAIM);
+        Long userId = rawId instanceof Number number ? number.longValue() : null;
+
         // Tokens issued before versions existed carry no claim. Treating them as
         // an impossible version means they stop working, and everyone signs in
         // once more after this is deployed.
-        return new TokenClaims(claims.getSubject(), version == null ? -1 : version);
+        return new TokenClaims(claims.getSubject(), version == null ? -1 : version, userId);
     }
 
-    public record TokenClaims(String email, int version) {
+    public record TokenClaims(String email, int version, Long userId) {
+
+        // A token with no id in it: older tokens, and users not yet saved
+        public TokenClaims(String email, int version) {
+            this(email, version, null);
+        }
     }
 }

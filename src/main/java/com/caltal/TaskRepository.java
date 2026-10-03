@@ -14,4 +14,7 @@ public interface TaskRepository {
     Optional<Task> findByIdAndOwner(Long id, User owner);
 
     void delete(Task task);
+
+    // Used when an account is deleted: its tasks go with it.
+    void deleteAllByOwner(User owner);
 }

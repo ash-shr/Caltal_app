@@ -13,6 +13,7 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import io.jsonwebtoken.MalformedJwtException;
 
@@ -67,6 +68,21 @@ class JwtAuthFilterTest {
         when(users.findByEmail("gone@example.com")).thenReturn(Optional.empty());
 
         sendWithToken("orphan");
+
+        assertNull(signedInAs());
+    }
+
+    @Test
+    void refusesATokenFromADeletedAccountThatHadTheSameEmail() throws Exception {
+        // Account 3 was deleted; account 7 was then made with the same email.
+        // Both start at token version 0, so only the id tells them apart.
+        User newAccount = new User("ash@example.com", "hash", "Ash");
+        ReflectionTestUtils.setField(newAccount, "id", 7L);
+        when(jwtService.parse("old-account"))
+                .thenReturn(new JwtService.TokenClaims("ash@example.com", 0, 3L));
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(newAccount));
+
+        sendWithToken("old-account");
 
         assertNull(signedInAs());
     }

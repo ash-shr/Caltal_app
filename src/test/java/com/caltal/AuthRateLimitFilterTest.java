@@ -42,6 +42,14 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
+    void alsoLimitsTheRequestsThatCheckTheCurrentPassword() throws Exception {
+        AuthRateLimitFilter filter = new AuthRateLimitFilter(1, 60);
+        send(filter, "PUT", "/api/me/password", "1.2.3.4");
+
+        assertEquals(429, send(filter, "DELETE", "/api/me", "1.2.3.4").getStatus());
+    }
+
+    @Test
     void leavesTheRestOfTheApiAlone() throws Exception {
         AuthRateLimitFilter filter = new AuthRateLimitFilter(1, 60);
 

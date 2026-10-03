@@ -30,4 +30,19 @@ class JpaTaskRepositoryTest {
         assertNotNull(saved.getId());
         assertEquals(1, tasks.findAllByOwner(owner).size());
     }
+
+    @Test
+    void deletesEveryTaskOfOneOwnerAndNoOneElses() {
+        User ash = users.save(new User("ash@example.com", "hash", "Ash"));
+        User sam = users.save(new User("sam@example.com", "hash", "Sam"));
+        LocalDate day = LocalDate.of(2026, 10, 2);
+        tasks.save(new Task("buy milk", 53.796, -1.545, 200, day, ash));
+        tasks.save(new Task("gym", 53.810, -1.560, 100, day, ash));
+        tasks.save(new Task("post office", 53.800, -1.550, 150, day, sam));
+
+        tasks.deleteAllByOwner(ash);
+
+        assertEquals(0, tasks.findAllByOwner(ash).size());
+        assertEquals(1, tasks.findAllByOwner(sam).size());
+    }
 }

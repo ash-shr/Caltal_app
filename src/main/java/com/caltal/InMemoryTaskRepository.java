@@ -43,4 +43,9 @@ public class InMemoryTaskRepository implements TaskRepository {
     public void delete(Task task) {
         tasks.remove(task);
     }
+
+    @Override
+    public void deleteAllByOwner(User owner) {
+        tasks.removeIf(task -> task.getOwner().equals(owner));
+    }
 }

@@ -2,6 +2,7 @@ package com.caltal;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,9 +40,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 JwtService.TokenClaims claims = jwtService.parse(token);
 
-                // A valid signature isn't enough: the user must still exist, and
-                // must not have signed out since this token was issued.
+                // A valid signature isn't enough: the user must still exist, must
+                // be the same account the token was issued to (not a new one made
+                // later with the same email), and must not have signed out since.
                 users.findByEmail(claims.email())
+                        .filter(user -> Objects.equals(user.getId(), claims.userId()))
                         .filter(user -> user.getTokenVersion() == claims.version())
                         .ifPresent(user -> SecurityContextHolder.getContext().setAuthentication(
                                 new UsernamePasswordAuthenticationToken(

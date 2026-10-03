@@ -2,6 +2,7 @@
   "expo": {
     "name": "Caltal",
     "slug": "caltal",
+    "scheme": "caltal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -65,7 +66,11 @@
             "enableSceneSupport": true
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-router",
+      "@maplibre/maplibre-react-native"
     ],
     "extra": {
       "eas": {

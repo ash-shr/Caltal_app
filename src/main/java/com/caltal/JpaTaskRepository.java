@@ -35,4 +35,9 @@ public class JpaTaskRepository implements TaskRepository {
     public void delete(Task task) {
         springDataRepository.delete(task);
     }
+
+    @Override
+    public void deleteAllByOwner(User owner) {
+        springDataRepository.deleteAllByOwner(owner);
+    }
 }

@@ -116,6 +116,13 @@ public class User {
         tokenVersion++;
     }
 
+    // A new password also ends every existing session. If it was changed because
+    // someone else knew the old one, they lose access along with it.
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+        revokeTokens();
+    }
+
     public void setEmail(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email must not be empty");
