@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { reminderChannel } from './notificationChannel';
 
 // Time reminders are scheduled on the phone itself. Once handed to the OS they
 // fire at the right moment even if the app is closed or the phone is offline —
@@ -35,6 +36,10 @@ export async function clearTimeReminders() {
 }
 
 async function canNotify() {
+  // Android 13+ won't show the permission prompt until the app has at least
+  // one notification channel, so make ours first.
+  await reminderChannel();
+
   const current = await Notifications.getPermissionsAsync();
 
   if (current.granted) {
@@ -66,6 +71,7 @@ export async function scheduleTimeReminders(tasks) {
     .slice(0, MAX_SCHEDULED);
 
   await clearTimeReminders();
+  const channelId = await reminderChannel();
 
   for (const { task, at } of upcoming) {
     await Notifications.scheduleNotificationAsync({
@@ -75,7 +81,12 @@ export async function scheduleTimeReminders(tasks) {
         body: `Reminder for ${task.remindAt.slice(0, 5)}`,
         data: { taskId: task.id },
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: at,
+        // On Android, the loud "Reminders" channel; on iPhone, undefined
+        ...(channelId ? { channelId } : {}),
+      },
     });
   }
 

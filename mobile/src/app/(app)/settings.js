@@ -15,7 +15,7 @@ import Constants from 'expo-constants';
 import Slider from '@react-native-community/slider';
 import Button from '../../components/Button';
 import { changePassword, deleteAccount, getMe, updateName } from '../../api';
-import { requestPermissions } from '../../geofencing';
+import { usePlaceReminders } from '../../placeReminders';
 import { clearAllReminders } from '../../reminders';
 import { useSession } from '../../session';
 import { RADIUS_MAX, RADIUS_MIN, useSettings } from '../../settings';
@@ -111,28 +111,13 @@ export default function Settings() {
   };
 
   // ---- Reminders ----
-  const [placeMessage, setPlaceMessage] = useState('');
+  const placeReminders = usePlaceReminders();
 
   // The slider moves smoothly on its own copy, and the setting is saved once
   // when the finger lifts, rather than on every step of the drag.
   const [radius, setRadius] = useState(settings.defaultRadius);
 
-  const togglePlaceReminders = async on => {
-    setPlaceMessage('');
-
-    if (!on) {
-      updateSettings({ placeReminders: false });
-      return;
-    }
-
-    // Asked here, when the reason is obvious, rather than at first launch
-    const permission = await requestPermissions();
-    if (permission.ok) {
-      updateSettings({ placeReminders: true });
-    } else {
-      setPlaceMessage(permission.reason);
-    }
-  };
+  const togglePlaceReminders = on => (on ? placeReminders.turnOn() : placeReminders.turnOff());
 
   // ---- Delete account ----
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -256,9 +241,9 @@ export default function Settings() {
             value={settings.placeReminders}
             onChange={togglePlaceReminders}
           />
-          {placeMessage !== '' && (
+          {placeReminders.problem !== '' && (
             <View style={styles.stack}>
-              <Text style={styles.warning}>{placeMessage}</Text>
+              <Text style={styles.warning}>{placeReminders.problem}</Text>
               <Button
                 title="Open phone settings"
                 variant="secondary"

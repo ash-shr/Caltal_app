@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { today } from './dates';
+import { reminderChannel } from './notificationChannel';
 
 // The name the OS knows this background job by. It must be registered at module
 // load — before React renders — because the system can start the app straight
@@ -41,14 +42,16 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   }
 
   const watched = await readWatched();
+  const channelId = await reminderChannel();
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title: watched?.names?.[region.identifier] ?? 'A task is nearby',
       body: 'You are near somewhere you have something to do.',
     },
-    // null means "right now"
-    trigger: null,
+    // A channel and no time means "show it now, on that channel". null means
+    // "show it now" on the default one.
+    trigger: channelId ? { channelId } : null,
   });
 });
 
@@ -150,6 +153,9 @@ export async function requestPermissions() {
     };
   }
 
+  // Android 13+ won't show the notifications prompt until the app has at
+  // least one notification channel, so make ours first.
+  await reminderChannel();
   const notifications = await Notifications.requestPermissionsAsync();
 
   if (!notifications.granted) {

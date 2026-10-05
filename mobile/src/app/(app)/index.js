@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../../components/Avatar';
 import DayTasks from '../../components/DayTasks';
 import MonthCalendar from '../../components/MonthCalendar';
+import PlaceRemindersBanner from '../../components/PlaceRemindersBanner';
 import ProfileMenu from '../../components/ProfileMenu';
 import SearchBar from '../../components/SearchBar';
 import TaskDetail from '../../components/TaskDetail';
@@ -109,6 +110,10 @@ export default function Home() {
   }, [tasks]);
 
   const dayTasks = tasks.filter(task => task.dueDate === selectedDate);
+
+  // Worth nagging about only if there's something with a place still to do
+  const showPlaceBanner =
+    !settings.placeReminders && tasks.some(task => !task.complete && hasPlace(task));
 
   // Ask for "while using the app" location once, so the map can start where
   // the person is and show the blue dot. Background location is only asked
@@ -354,6 +359,8 @@ export default function Home() {
         >
           {mode === 'calendar' && (
             <>
+              {showPlaceBanner && <PlaceRemindersBanner />}
+
               <MonthCalendar selected={selectedDate} onSelect={setSelectedDate} marks={marks} />
 
               <View style={styles.dayHeader}>

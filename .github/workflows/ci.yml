@@ -24,7 +24,10 @@ jobs:
       - name: Build and test
         run: mvn --batch-mode clean verify
 
+      # Code-quality report only. If SonarCloud is down or its token has
+      # expired, that shouldn't stop a tested build from being deployed.
       - name: SonarCloud scan
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >

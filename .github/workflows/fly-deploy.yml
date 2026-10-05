@@ -1,18 +1,32 @@
+# Deploys to Fly only after the CI workflow (build and tests) has passed for
+# a push to main — so a commit with failing tests never goes live.
 # See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
 
 name: Fly Deploy
 on:
-  push:
-    branches:
-      - main
-      - master
+  # Runs when CI finishes on main...
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # ...or by hand, from the Actions tab ("Run workflow")
+  workflow_dispatch:
+
 jobs:
   deploy:
     name: Deploy app
+    # From CI: only if the tests passed, and only for pushes (not pull requests)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group    # only one deploy at a time
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The exact commit the tests ran on, not whatever main is by now
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
         env:
