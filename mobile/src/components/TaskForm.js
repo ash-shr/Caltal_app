@@ -5,23 +5,19 @@ import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import Button from './Button';
 import DateTimeField from './DateTimeField';
-import Segmented from './Segmented';
 import { today } from '../dates';
+import { savedPlaceAt } from '../places';
 import { RADIUS_MAX, RADIUS_MIN } from '../settings';
 import { colours } from '../theme';
 
-const REMINDER_TYPES = [
-  { value: 'LOCATION', label: 'Place' },
-  { value: 'TIME', label: 'Time' },
-  { value: 'BOTH', label: 'Both' },
-];
-
-export function needsPlace(type) {
-  return type === 'LOCATION' || type === 'BOTH';
-}
-
-export function needsTime(type) {
-  return type === 'TIME' || type === 'BOTH';
+// There's no Place / Time / Both switch: the type follows from what's filled
+// in. A place and a time is BOTH, just one is LOCATION or TIME, and neither is
+// a plain to-do (NONE) that simply sits on its day.
+export function reminderTypeOf(draft) {
+  if (draft.placeOn && draft.timeOn) return 'BOTH';
+  if (draft.placeOn) return 'LOCATION';
+  if (draft.timeOn) return 'TIME';
+  return 'NONE';
 }
 
 // A sensible starting time for a reminder on `date`: the next whole hour if
@@ -35,26 +31,52 @@ function startingTime(date) {
   return hour > 23 ? '23:59' : `${String(hour).padStart(2, '0')}:00`;
 }
 
+// A dashed "+ Add a time" style button for a part of the task that's optional.
+function AddRow({ icon, label, hint, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
+      accessibilityRole="button"
+    >
+      <Ionicons name={icon} size={20} color={colours.orange} />
+      <Text style={styles.addLabel}>{label}</Text>
+      {hint && <Text style={styles.addHint}>{hint}</Text>}
+    </Pressable>
+  );
+}
+
 // The form for adding and editing a task. It doesn't keep the task's details
 // itself: HomeScreen owns them (the `draft`), because the map needs them too —
 // a tap on the map moves the draft's pin, and the radius slider here resizes
 // the circle drawn there. The form shows the draft and reports changes.
-export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRemindersOn }) {
+//   places       saved places, offered as one-tap chips
+//   onPickPlace  a saved place was tapped (HomeScreen moves the pin and map)
+//   onSavePlace  "Save this place" was tapped for the pinned spot
+export default function TaskForm({
+  draft,
+  onChange,
+  onSubmit,
+  onCancel,
+  placeRemindersOn,
+  places = [],
+  onPickPlace,
+  onSavePlace,
+}) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const editing = draft.taskId != null;
-  const wantsPlace = needsPlace(draft.reminderType);
-  const wantsTime = needsTime(draft.reminderType);
 
-  const chooseType = type => {
-    // A time picker always shows a time, so give it one to start from.
-    if (needsTime(type) && !draft.remindAt) {
-      onChange({ reminderType: type, remindAt: startingTime(draft.date) });
-    } else {
-      onChange({ reminderType: type });
-    }
-  };
+  // The saved place the pin is on, if it's on one
+  const pinnedPlace =
+    draft.placeOn && draft.latitude != null
+      ? savedPlaceAt(places, draft.latitude, draft.longitude)
+      : null;
+
+  // A time picker always shows a time, so give it one to start from.
+  const addTime = () =>
+    onChange({ timeOn: true, remindAt: draft.remindAt || startingTime(draft.date) });
 
   const submit = async () => {
     setError('');
@@ -63,8 +85,8 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
       setError('Give it a name.');
       return;
     }
-    if (wantsPlace && draft.latitude == null) {
-      setError('Tap the map, or search, to choose a place.');
+    if (draft.placeOn && draft.latitude == null) {
+      setError('Tap the map, search, or pick a saved place. Or remove the place.');
       return;
     }
 
@@ -73,10 +95,10 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
     const payload = {
       name: draft.name.trim(),
       dueDate: draft.date,
-      reminderType: draft.reminderType,
+      reminderType: reminderTypeOf(draft),
     };
 
-    if (wantsPlace) {
+    if (draft.placeOn) {
       payload.latitude = draft.latitude;
       payload.longitude = draft.longitude;
       payload.radius = draft.radius;
@@ -90,7 +112,7 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
       }
     }
 
-    if (wantsTime) {
+    if (draft.timeOn) {
       payload.remindAt = draft.remindAt;
     }
 
@@ -131,19 +153,31 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
         onChange={date => onChange({ date })}
       />
 
-      <Text style={styles.label}>Remind me by</Text>
-      <Segmented options={REMINDER_TYPES} value={draft.reminderType} onChange={chooseType} />
+      <Text style={styles.label}>Remind me</Text>
 
-      {wantsTime && (
-        <DateTimeField
-          label="Remind me at"
-          mode="time"
-          value={draft.remindAt}
-          onChange={remindAt => onChange({ remindAt })}
-        />
+      {draft.timeOn ? (
+        <View style={styles.removableRow}>
+          <View style={styles.grow}>
+            <DateTimeField
+              label="At"
+              mode="time"
+              value={draft.remindAt}
+              onChange={remindAt => onChange({ remindAt })}
+            />
+          </View>
+          <Pressable
+            onPress={() => onChange({ timeOn: false })}
+            hitSlop={8}
+            accessibilityLabel="Remove the time"
+          >
+            <Ionicons name="close-circle" size={24} color={colours.faint} />
+          </Pressable>
+        </View>
+      ) : (
+        <AddRow icon="time-outline" label="Add a time" onPress={addTime} />
       )}
 
-      {wantsPlace && (
+      {draft.placeOn ? (
         <View style={styles.place}>
           <View style={styles.placeStatus}>
             <Ionicons
@@ -152,11 +186,46 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
               color={draft.latitude != null ? colours.ink : colours.orange}
             />
             <Text style={styles.placeText}>
-              {draft.latitude != null
-                ? 'Pinned. Tap the map to move it.'
-                : 'Tap the map, or search above, to choose where this task lives.'}
+              {pinnedPlace
+                ? `At ${pinnedPlace.name}. Tap the map to move it.`
+                : draft.latitude != null
+                  ? 'Pinned. Tap the map to move it.'
+                  : places.length > 0
+                    ? 'Tap the map, search above, or pick one of your places.'
+                    : 'Tap the map, or search above, to choose where this task lives.'}
             </Text>
           </View>
+
+          {places.length > 0 && (
+            <View style={styles.chips}>
+              {places.map(place => {
+                const chosen = pinnedPlace?.id === place.id;
+                return (
+                  <Pressable
+                    key={place.id}
+                    onPress={() => onPickPlace?.(place)}
+                    style={[styles.chip, chosen && styles.chipChosen]}
+                  >
+                    <Ionicons
+                      name="bookmark"
+                      size={13}
+                      color={chosen ? '#ffffff' : colours.orange}
+                    />
+                    <Text style={[styles.chipText, chosen && styles.chipTextChosen]}>
+                      {place.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {draft.latitude != null && !pinnedPlace && (
+            <Pressable onPress={onSavePlace} style={styles.saveLink} hitSlop={6}>
+              <Ionicons name="bookmark-outline" size={16} color={colours.orange} />
+              <Text style={styles.saveLinkText}>Save this place for next time</Text>
+            </Pressable>
+          )}
 
           <View style={styles.radiusHeader}>
             <Text style={styles.label}>Remind me within</Text>
@@ -185,7 +254,32 @@ export default function TaskForm({ draft, onChange, onSubmit, onCancel, placeRem
               {"Place reminders are off. Turn them on in Settings to be told when you're nearby."}
             </Text>
           )}
+
+          <Pressable
+            onPress={() => onChange({ placeOn: false })}
+            style={styles.removeLink}
+            hitSlop={6}
+          >
+            <Text style={styles.removeLinkText}>
+              {draft.trigger
+                ? 'Remove the place (and the second reminder place with it)'
+                : 'Remove the place'}
+            </Text>
+          </Pressable>
         </View>
+      ) : (
+        <AddRow
+          icon="location-outline"
+          label="Add a place"
+          hint="or tap the map"
+          onPress={() => onChange({ placeOn: true })}
+        />
+      )}
+
+      {!draft.timeOn && !draft.placeOn && (
+        <Text style={styles.note}>
+          No reminder: it will just sit on its day in the calendar.
+        </Text>
       )}
 
       {error !== '' && <Text style={styles.error}>{error}</Text>}
@@ -210,6 +304,24 @@ const styles = StyleSheet.create({
     color: colours.ink,
   },
   label: { fontSize: 13, color: colours.muted },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colours.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    minHeight: 52,
+  },
+  pressed: { opacity: 0.7 },
+  addLabel: { fontSize: 15, color: colours.ink },
+  addHint: { fontSize: 13, color: colours.faint },
+  removableRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  grow: { flex: 1 },
+  removeLink: { alignSelf: 'flex-start' },
+  removeLinkText: { fontSize: 14, color: colours.muted, textDecorationLine: 'underline' },
   place: { gap: 10 },
   placeStatus: {
     flexDirection: 'row',
@@ -223,5 +335,22 @@ const styles = StyleSheet.create({
   radiusHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   radiusValue: { fontSize: 13, color: colours.ink, fontWeight: '600' },
   note: { fontSize: 12, color: colours.muted, lineHeight: 17 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colours.surface,
+    borderWidth: 1,
+    borderColor: colours.border,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipChosen: { backgroundColor: colours.ink, borderColor: colours.ink },
+  chipText: { fontSize: 14, color: colours.body },
+  chipTextChosen: { color: '#ffffff' },
+  saveLink: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  saveLinkText: { fontSize: 14, color: colours.orange, fontWeight: '500' },
   error: { fontSize: 14, color: colours.danger },
 });

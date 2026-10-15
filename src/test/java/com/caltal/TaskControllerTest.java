@@ -165,6 +165,20 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
+    void createsAPlainToDoWithNoReminder() throws Exception {
+        when(currentUser.get()).thenReturn(owner);
+
+        mockMvc.perform(post("/api/tasks")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"call mum\",\"reminderType\":\"NONE\","
+                        + "\"dueDate\":\"2026-10-15\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reminderType").value("NONE"));
+    }
+
+    @Test
     void rejectsUnauthenticatedRequest() throws Exception {
         mockMvc.perform(get("/api/tasks"))
                 .andExpect(status().isUnauthorized());

@@ -194,9 +194,9 @@ public class Task {
                     "A reminder place needs a latitude, a longitude and a radius");
         }
 
-        if (anyPresent && reminderType == ReminderType.TIME) {
+        if (anyPresent && (reminderType == ReminderType.TIME || reminderType == ReminderType.NONE)) {
             throw new IllegalArgumentException(
-                    "A time-only task cannot have a reminder place");
+                    "Only a task with a place can have a reminder place");
         }
 
         checkRadius(radius);
@@ -307,6 +307,14 @@ public class Task {
                 }
                 if (remindAt == null) {
                     throw new IllegalArgumentException("BOTH task must have a remindAt time");
+                }
+                break;
+            case NONE:
+                if (latitude != null || longitude != null || radius != null) {
+                    throw new IllegalArgumentException("A task with no reminder must not have location fields");
+                }
+                if (remindAt != null) {
+                    throw new IllegalArgumentException("A task with no reminder must not have a remindAt time");
                 }
                 break;
         }

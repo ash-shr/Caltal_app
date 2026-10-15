@@ -171,3 +171,21 @@ export async function deleteAccount(password) {
 
   await clearSession();
 }
+
+// ---- Saved places (Home, Work…) ----
+
+export function getPlaces() {
+  return request('/places');
+}
+
+export function createPlace(place) {
+  return request('/places', { method: 'POST', body: JSON.stringify(place) });
+}
+
+export function updatePlace(id, place) {
+  return request(`/places/${id}`, { method: 'PUT', body: JSON.stringify(place) });
+}
+
+export function deletePlace(id) {
+  return request(`/places/${id}`, { method: 'DELETE' });
+}

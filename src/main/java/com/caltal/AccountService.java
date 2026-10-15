@@ -12,16 +12,19 @@ public class AccountService {
 
     private final UserRepository users;
     private final TaskRepository tasks;
+    private final SavedPlaceRepository places;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
     public AccountService(
             UserRepository users,
             TaskRepository tasks,
+            SavedPlaceRepository places,
             PasswordEncoder passwordEncoder,
             JwtService jwtService) {
         this.users = users;
         this.tasks = tasks;
+        this.places = places;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -48,9 +51,10 @@ public class AccountService {
         return new AuthResponse(jwtService.generateToken(user), user.getName(), user.getEmail());
     }
 
-    // Tasks first, then the user: each task points at its owner, so the database
-    // refuses to remove a user who still owns anything. @Transactional makes the
-    // two steps one — if the second fails, the tasks come back.
+    // Tasks and saved places first, then the user: each points at its owner, so
+    // the database refuses to remove a user who still owns anything.
+    // @Transactional makes the steps one — if a later one fails, the earlier
+    // deletions are undone.
     @Transactional
     public void deleteAccount(User user, String password) {
         if (user.hasPassword()) {
@@ -58,6 +62,7 @@ public class AccountService {
         }
 
         tasks.deleteAllByOwner(user);
+        places.deleteAllByOwner(user);
         users.delete(user);
     }
 

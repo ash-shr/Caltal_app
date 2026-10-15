@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# A newer push to the same branch cancels the older run still going. Without
+# this, two quick pushes could finish out of order and the older commit would
+# be deployed last, putting the live site back a version.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

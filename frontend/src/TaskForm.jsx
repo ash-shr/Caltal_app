@@ -7,6 +7,8 @@ const REMINDER_TYPES = [
   { value: 'LOCATION', label: 'Place' },
   { value: 'TIME', label: 'Time' },
   { value: 'BOTH', label: 'Both' },
+  // A plain to-do: it sits on its day with no reminder
+  { value: 'NONE', label: 'None' },
 ];
 
 const inputClass =

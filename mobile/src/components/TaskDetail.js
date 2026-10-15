@@ -6,7 +6,12 @@ import { longDay, shortTime } from '../dates';
 import { hasPlace } from '../tasks';
 import { colours } from '../theme';
 
-const TYPE_LABELS = { LOCATION: 'Place', TIME: 'Time', BOTH: 'Place and time' };
+const TYPE_LABELS = {
+  LOCATION: 'Reminds you at a place',
+  TIME: 'Reminds you at a time',
+  BOTH: 'Reminds you at a place and a time',
+  NONE: 'No reminder',
+};
 
 function Line({ icon, children }) {
   return (

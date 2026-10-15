@@ -22,8 +22,10 @@ import { colours } from '../theme';
 //
 //   tasks       every task; the ones with a place get a pin
 //   selectedId  the task being looked at, drawn dark with its radius
-//   draft       { latitude, longitude, radius } while adding or editing
+//   draft       the task being added or edited; its pin and circle are drawn
+//               when it has a place (placeOn) that's been put somewhere
 //   searched    { latitude, longitude } of the last search result
+//   places      the person's saved places (Home, Work…), drawn as white dots
 //   showUser    location permission granted, so the blue dot can be shown
 const TaskMap = forwardRef(function TaskMap(
   {
@@ -31,11 +33,13 @@ const TaskMap = forwardRef(function TaskMap(
     selectedId,
     draft,
     searched,
+    places = [],
     showUser,
     attributionTop = 120,
     onPress,
     onLongPress,
     onPinPress,
+    onPlacePress,
   },
   ref,
 ) {
@@ -82,7 +86,7 @@ const TaskMap = forwardRef(function TaskMap(
     const shapes = [];
     const selected = tasks.find(task => task.id === selectedId);
 
-    if (draft && draft.latitude != null) {
+    if (draft?.placeOn && draft.latitude != null) {
       shapes.push(
         circlePolygon(draft.latitude, draft.longitude, draft.radius, { colour: colours.ink }),
       );
@@ -107,9 +111,19 @@ const TaskMap = forwardRef(function TaskMap(
     return collection(shapes);
   }, [tasks, selectedId, draft]);
 
+  const savedPlaces = useMemo(
+    () =>
+      collection(
+        places.map(place =>
+          point(place.latitude, place.longitude, { id: place.id, name: place.name }),
+        ),
+      ),
+    [places],
+  );
+
   const markers = useMemo(() => {
     const features = [];
-    if (draft && draft.latitude != null) {
+    if (draft?.placeOn && draft.latitude != null) {
       features.push(point(draft.latitude, draft.longitude, { kind: 'draft' }));
     }
     if (searched) {
@@ -151,6 +165,46 @@ const TaskMap = forwardRef(function TaskMap(
           id="radius-edge"
           type="line"
           paint={{ 'line-color': ['get', 'colour'], 'line-width': 1.5, 'line-opacity': 0.6 }}
+        />
+      </GeoJSONSource>
+
+      <GeoJSONSource
+        id="saved-places"
+        data={savedPlaces}
+        onPress={event => {
+          const feature = event.nativeEvent.features[0];
+          // Same rule as the task pins below: stop the tap only if it was used
+          if (feature && onPlacePress?.(feature.properties.id)) {
+            event.stopPropagation();
+          }
+        }}
+      >
+        <Layer
+          id="saved-place"
+          type="circle"
+          paint={{
+            'circle-radius': 7,
+            'circle-color': '#ffffff',
+            'circle-stroke-width': 3,
+            'circle-stroke-color': colours.ink,
+          }}
+        />
+        <Layer
+          id="saved-place-label"
+          type="symbol"
+          layout={{
+            'text-field': ['get', 'name'],
+            'text-font': ['Noto Sans Bold'],
+            'text-size': 12,
+            'text-anchor': 'top',
+            'text-offset': [0, 1],
+            'text-optional': true,
+          }}
+          paint={{
+            'text-color': colours.ink,
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 1.5,
+          }}
         />
       </GeoJSONSource>
 

@@ -145,6 +145,34 @@ class TaskTest {
     }
 
     @Test
+    void acceptsAPlainToDoWithNoPlaceAndNoTime() {
+        Task task = new Task("call mum", LocalDate.of(2026, 10, 15), owner,
+                ReminderType.NONE, null, null, null, null);
+
+        assertEquals(ReminderType.NONE, task.getReminderType());
+        assertFalse(task.isWithinRange(53.7960, -1.5450));
+    }
+
+    @Test
+    void rejectsAPlainToDoThatSneaksInAPlaceOrATime() {
+        LocalDate day = LocalDate.of(2026, 10, 15);
+
+        assertThrows(IllegalArgumentException.class, () -> new Task("call mum", day, owner,
+                ReminderType.NONE, 53.7960, -1.5450, 200, null));
+        assertThrows(IllegalArgumentException.class, () -> new Task("call mum", day, owner,
+                ReminderType.NONE, null, null, null, LocalTime.of(9, 0)));
+    }
+
+    @Test
+    void rejectsATriggerPlaceOnAPlainToDo() {
+        Task task = new Task("call mum", LocalDate.of(2026, 10, 15), owner,
+                ReminderType.NONE, null, null, null, null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> task.applyTrigger(53.8200, -1.5800, 300));
+    }
+
+    @Test
     void acceptsANameRightAtTheLengthLimit() {
         Task task = new Task("x".repeat(255), 53.7960, -1.5450, 200,
                 LocalDate.of(2026, 9, 21), owner);

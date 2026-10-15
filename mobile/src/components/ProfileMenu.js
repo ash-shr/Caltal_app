@@ -21,7 +21,15 @@ function Row({ icon, label, onPress, tone = 'normal' }) {
 
 // The card that drops down from the initials button, like the Claude app's
 // profile menu. A Modal sits above everything, including the map and sheet.
-export default function ProfileMenu({ visible, user, onClose, onSettings, onTerms, onSignOut }) {
+export default function ProfileMenu({
+  visible,
+  user,
+  onClose,
+  onSettings,
+  onPlaces,
+  onTerms,
+  onSignOut,
+}) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -43,6 +51,7 @@ export default function ProfileMenu({ visible, user, onClose, onSettings, onTerm
 
           <View style={styles.divider} />
 
+          <Row icon="bookmark-outline" label="Saved places" onPress={onPlaces} />
           <Row icon="settings-outline" label="Settings" onPress={onSettings} />
           <Row icon="document-text-outline" label="Terms and conditions" onPress={onTerms} />
 

@@ -19,11 +19,13 @@ import DayTasks from '../../components/DayTasks';
 import MonthCalendar from '../../components/MonthCalendar';
 import PlaceRemindersBanner from '../../components/PlaceRemindersBanner';
 import ProfileMenu from '../../components/ProfileMenu';
+import SavePlaceModal from '../../components/SavePlaceModal';
 import SearchBar from '../../components/SearchBar';
 import TaskDetail from '../../components/TaskDetail';
-import TaskForm, { needsPlace } from '../../components/TaskForm';
+import TaskForm from '../../components/TaskForm';
 import TaskMap from '../../components/TaskMap';
 import { longDay, shortTime, today } from '../../dates';
+import { savedPlaceAt, usePlaces } from '../../places';
 import { useSession } from '../../session';
 import { useSettings } from '../../settings';
 import { hasPlace, useTasks } from '../../tasks';
@@ -34,14 +36,17 @@ const SNAP_FRACTIONS = [0.16, 0.5, 0.92];
 const SNAP_POINTS = SNAP_FRACTIONS.map(fraction => `${fraction * 100}%`);
 const HALF = 1;
 
-// A blank task for the form, optionally already pinned somewhere.
+// A blank task for the form, optionally already pinned somewhere. Whether it
+// has a time and whether it has a place are two separate switches; the
+// reminder type is worked out from them when it's saved.
 function newDraft(date, radius, place) {
   return {
     taskId: null,
     name: '',
     date,
-    reminderType: 'LOCATION',
+    timeOn: false,
     remindAt: '',
+    placeOn: place != null,
     latitude: place?.latitude ?? null,
     longitude: place?.longitude ?? null,
     radius,
@@ -54,8 +59,9 @@ function draftFromTask(task, defaultRadius) {
     taskId: task.id,
     name: task.name,
     date: task.dueDate,
-    reminderType: task.reminderType ?? 'LOCATION',
+    timeOn: task.remindAt != null,
     remindAt: shortTime(task.remindAt),
+    placeOn: hasPlace(task),
     latitude: task.latitude,
     longitude: task.longitude,
     radius: task.radius ?? defaultRadius,
@@ -80,6 +86,7 @@ export default function Home() {
   const { user, signOut } = useSession();
   const { settings } = useSettings();
   const { tasks, error, refresh, create, update, complete, remove } = useTasks();
+  const { places } = usePlaces();
 
   const map = useRef(null);
   const sheet = useRef(null);
@@ -90,6 +97,9 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [searched, setSearched] = useState(null);
+  // The spot being saved as a place, while the "Save this place" box is open
+  const [savingSpot, setSavingSpot] = useState(null);
+  const [placeBannerHidden, setPlaceBannerHidden] = useState(false);
   const [sheetIndex, setSheetIndex] = useState(HALF);
   const [menuOpen, setMenuOpen] = useState(false);
   const [canShowLocation, setCanShowLocation] = useState(false);
@@ -113,7 +123,9 @@ export default function Home() {
 
   // Worth nagging about only if there's something with a place still to do
   const showPlaceBanner =
-    !settings.placeReminders && tasks.some(task => !task.complete && hasPlace(task));
+    !placeBannerHidden &&
+    !settings.placeReminders &&
+    tasks.some(task => !task.complete && hasPlace(task));
 
   // Ask for "while using the app" location once, so the map can start where
   // the person is and show the blue dot. Background location is only asked
@@ -213,13 +225,27 @@ export default function Home() {
 
   const changeDraft = changes => setDraft(current => ({ ...current, ...changes }));
 
+  // Gives the task being edited a place at this spot, switching its place
+  // part on if it was off.
+  const pinDraftAt = place =>
+    changeDraft({ placeOn: true, latitude: place.latitude, longitude: place.longitude });
+
   // ---- The map ----
 
   const pressMap = place => {
-    Keyboard.dismiss();
-    // While the form wants a place, a tap on the map puts the pin there.
-    if (mode === 'form' && needsPlace(draft.reminderType)) {
-      changeDraft(place);
+    // With the keyboard up, a tap on the map is usually just "put the keyboard
+    // away", so that's all the first tap does.
+    if (Keyboard.isVisible()) {
+      Keyboard.dismiss();
+      return;
+    }
+    // While the form is open, a tap on the map gives the task a place there
+    // (adding one if it had none). Otherwise a tap on empty map lets go of the
+    // last search result.
+    if (mode === 'form') {
+      pinDraftAt(place);
+    } else {
+      setSearched(null);
     }
   };
 
@@ -234,11 +260,38 @@ export default function Home() {
   // should get it as well.
   const pressPin = id => {
     const task = tasks.find(candidate => candidate.id === id);
-    if (task && mode !== 'form') {
+    if (!task) {
+      return false;
+    }
+    if (mode !== 'form') {
       openTask(task);
       return true;
     }
+    // In the form, a pin is a place like any other: put the new pin on it.
+    // If a saved place is there too (often hidden under the task's pin),
+    // use its exact spot so the form knows it's that place.
+    if (hasPlace(task)) {
+      pinDraftAt(savedPlaceAt(places, task.latitude, task.longitude) ?? task);
+      return true;
+    }
     return false;
+  };
+
+  // A saved place's dot on the map: in the form it moves the pin there,
+  // otherwise it's picked just like a search result.
+  const pressPlace = id => {
+    const place = places.find(candidate => candidate.id === id);
+    if (!place) {
+      return false;
+    }
+    Keyboard.dismiss();
+    if (mode === 'form') {
+      pinDraftAt(place);
+    } else {
+      setSearched(place);
+    }
+    showOnMap(place.latitude, place.longitude, 16);
+    return true;
   };
 
   // ---- Search ----
@@ -252,13 +305,23 @@ export default function Home() {
   }, []);
 
   const choosePlace = place => {
-    if (mode === 'form' && needsPlace(draft.reminderType)) {
-      changeDraft({ latitude: place.latitude, longitude: place.longitude });
+    if (mode === 'form') {
+      pinDraftAt(place);
     } else {
       setSearched(place);
     }
     showOnMap(place.latitude, place.longitude, 16);
   };
+
+  // A chip in the task form: pin the task at that saved place
+  const pickPlaceForTask = place => {
+    pinDraftAt(place);
+    showOnMap(place.latitude, place.longitude, 16);
+  };
+
+  // Offered for a search result that isn't saved yet
+  const searchedIsSaved =
+    searched !== null && savedPlaceAt(places, searched.latitude, searched.longitude) !== null;
 
   // ---- Profile menu ----
 
@@ -278,13 +341,15 @@ export default function Home() {
         ref={map}
         tasks={tasks}
         selectedId={mode === 'task' ? selectedId : null}
-        draft={mode === 'form' && needsPlace(draft?.reminderType) ? draft : null}
+        draft={mode === 'form' ? draft : null}
         searched={searched}
         showUser={canShowLocation}
         attributionTop={insets.top + 124}
         onPress={pressMap}
         onLongPress={holdMap}
         onPinPress={pressPin}
+        places={places}
+        onPlacePress={pressPlace}
       />
 
       {/* box-none: this row's own empty space lets touches through to the map */}
@@ -298,7 +363,14 @@ export default function Home() {
 
           <SearchBar
             getNear={getNear}
+            saved={places}
             onSelect={choosePlace}
+            onFocus={() => {
+              // Lower the sheet so the results aren't hidden behind it
+              if (sheetIndex > 0) {
+                sheet.current?.snapToIndex(0);
+              }
+            }}
             onClear={() => setSearched(null)}
           />
 
@@ -313,13 +385,25 @@ export default function Home() {
 
         <View style={styles.secondRow} pointerEvents="box-none">
           {searched && mode !== 'form' ? (
-            <Pressable
-              onPress={() => startNewTask(searched)}
-              style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-            >
-              <Ionicons name="add" size={18} color="#ffffff" />
-              <Text style={styles.chipText}>Add a task here</Text>
-            </Pressable>
+            <View style={styles.chipRow} pointerEvents="box-none">
+              <Pressable
+                onPress={() => startNewTask(searched)}
+                style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+              >
+                <Ionicons name="add" size={18} color="#ffffff" />
+                <Text style={styles.chipText}>Add a task here</Text>
+              </Pressable>
+
+              {!searchedIsSaved && (
+                <Pressable
+                  onPress={() => setSavingSpot(searched)}
+                  style={({ pressed }) => [styles.lightChip, pressed && styles.pressed]}
+                >
+                  <Ionicons name="bookmark-outline" size={16} color={colours.ink} />
+                  <Text style={styles.lightChipText}>Save place</Text>
+                </Pressable>
+              )}
+            </View>
           ) : (
             <View />
           )}
@@ -359,7 +443,9 @@ export default function Home() {
         >
           {mode === 'calendar' && (
             <>
-              {showPlaceBanner && <PlaceRemindersBanner />}
+              {showPlaceBanner && (
+                <PlaceRemindersBanner onHide={() => setPlaceBannerHidden(true)} />
+              )}
 
               <MonthCalendar selected={selectedDate} onSelect={setSelectedDate} marks={marks} />
 
@@ -411,6 +497,11 @@ export default function Home() {
               onSubmit={saveForm}
               onCancel={cancelForm}
               placeRemindersOn={settings.placeReminders}
+              places={places}
+              onPickPlace={pickPlaceForTask}
+              onSavePlace={() =>
+                setSavingSpot({ latitude: draft.latitude, longitude: draft.longitude })
+              }
             />
           )}
         </BottomSheetScrollView>
@@ -422,8 +513,22 @@ export default function Home() {
         onClose={() => setMenuOpen(false)}
         onSettings={() => goTo('/settings')}
         onTerms={() => goTo('/terms')}
+        onPlaces={() => goTo('/places')}
         onSignOut={confirmSignOut}
       />
+
+      {savingSpot && (
+        <SavePlaceModal
+          spot={savingSpot}
+          onClose={() => setSavingSpot(null)}
+          onSaved={saved => {
+            // If it was the searched spot, it's a saved place now
+            if (searched && savedPlaceAt([saved], searched.latitude, searched.longitude)) {
+              setSearched(saved);
+            }
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -451,6 +556,18 @@ const styles = StyleSheet.create({
     ...floating,
   },
   chipText: { color: '#ffffff', fontSize: 14, fontWeight: '500' },
+  chipRow: { flexDirection: 'row', gap: 8 },
+  lightChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colours.surface,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    ...floating,
+  },
+  lightChipText: { color: colours.ink, fontSize: 14, fontWeight: '500' },
   pressed: { opacity: 0.85 },
   roundButton: {
     width: 44,

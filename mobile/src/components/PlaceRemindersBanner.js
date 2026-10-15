@@ -8,19 +8,20 @@ import { colours } from '../theme';
 // Shown above the calendar when there are tasks with a place but place
 // reminders are off — otherwise it's easy to pin a task and wonder why the
 // phone never says anything when you get there.
-export default function PlaceRemindersBanner() {
+//
+// onHide: the × was tapped. HomeScreen remembers it, because this banner is
+// re-created every time the sheet comes back to the calendar.
+export default function PlaceRemindersBanner({ onHide }) {
   const { turnOn, problem } = usePlaceReminders();
   const [busy, setBusy] = useState(false);
-  const [hidden, setHidden] = useState(false);
-
-  if (hidden) {
-    return null;
-  }
 
   const switchOn = async () => {
     setBusy(true);
-    await turnOn();
-    setBusy(false);
+    try {
+      await turnOn();
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -28,7 +29,7 @@ export default function PlaceRemindersBanner() {
       <View style={styles.header}>
         <Ionicons name="location" size={20} color={colours.orange} />
         <Text style={styles.title}>Place reminders are off</Text>
-        <Pressable onPress={() => setHidden(true)} hitSlop={10} accessibilityLabel="Hide">
+        <Pressable onPress={onHide} hitSlop={10} accessibilityLabel="Hide">
           <Ionicons name="close" size={20} color={colours.faint} />
         </Pressable>
       </View>

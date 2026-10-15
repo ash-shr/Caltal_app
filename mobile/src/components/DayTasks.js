@@ -61,11 +61,14 @@ export default function DayTasks({ tasks, onOpen, onComplete }) {
             {describe(task) !== '' && <Text style={styles.meta}>{describe(task)}</Text>}
           </View>
 
-          <Ionicons
-            name={hasPlace(task) ? 'location-outline' : 'time-outline'}
-            size={18}
-            color={colours.faint}
-          />
+          {/* What will remind you: a place, a time, or nothing for a plain to-do */}
+          {(hasPlace(task) || task.remindAt) && (
+            <Ionicons
+              name={hasPlace(task) ? 'location-outline' : 'time-outline'}
+              size={18}
+              color={colours.faint}
+            />
+          )}
         </Pressable>
       ))}
     </View>

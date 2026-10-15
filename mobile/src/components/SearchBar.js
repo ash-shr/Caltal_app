@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,14 +20,21 @@ const MIN_LETTERS = 3;
 const PAUSE_MS = 350;
 
 // getNear: returns { latitude, longitude } of the map's centre, to bias results
+// saved: the person's saved places, listed first (all of them before typing)
 // onSelect: a result was chosen
 // onClear: the search was emptied
-export default function SearchBar({ getNear, onSelect, onClear }) {
+// onFocus: the box was tapped (HomeScreen lowers the sheet to make room)
+export default function SearchBar({ getNear, saved = [], onSelect, onClear, onFocus }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
+  const [noMatches, setNoMatches] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // Saved places whose name contains what's typed; all of them before typing
+  const typed = query.trim().toLowerCase();
+  const savedMatches = saved.filter(place => place.name.toLowerCase().includes(typed));
 
   // Set when a result is picked, so filling the box with its name doesn't
   // immediately search for that name again.
@@ -38,6 +46,7 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
     if (text.trim().length < MIN_LETTERS) {
       setResults([]);
       setError('');
+      setNoMatches(false);
     }
   };
 
@@ -60,7 +69,8 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
         const near = await getNear();
         const found = await searchPlaces(query.trim(), near, controller.signal);
         setResults(found);
-        setError(found.length === 0 ? 'No places found.' : '');
+        setError('');
+        setNoMatches(found.length === 0);
       } catch (failure) {
         if (failure.name !== 'AbortError') {
           setError(failure.message);
@@ -77,7 +87,11 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
   }, [query, getNear]);
 
   const pick = place => {
-    justPicked.current = true;
+    // Only when the text will actually change. If it won't, the effect below
+    // doesn't run to reset the flag, and the next real search would be skipped.
+    if (place.name !== query) {
+      justPicked.current = true;
+    }
     setQuery(place.name);
     setResults([]);
     setOpen(false);
@@ -89,12 +103,15 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
     setQuery('');
     setResults([]);
     setError('');
+    setNoMatches(false);
     setOpen(false);
     Keyboard.dismiss();
     onClear?.();
   };
 
-  const showList = open && (results.length > 0 || error !== '');
+  // "No places found" only when nothing at all matched, saved places included
+  const message = error !== '' ? error : noMatches && savedMatches.length === 0 ? 'No places found.' : '';
+  const showList = open && (savedMatches.length > 0 || results.length > 0 || message !== '');
 
   return (
     <View style={styles.wrapper}>
@@ -105,7 +122,14 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
           style={styles.input}
           value={query}
           onChangeText={changeText}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            onFocus?.();
+          }}
+          // Tapping the map hides the keyboard; the list goes with it
+          onBlur={() => setOpen(false)}
+          // Pressing Search keeps the keyboard up while results arrive
+          submitBehavior="submit"
           placeholder="Search places"
           placeholderTextColor={colours.faint}
           returnKeyType="search"
@@ -123,9 +147,34 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
       </View>
 
       {showList && (
-        <View style={styles.results}>
-          {error !== '' ? (
-            <Text style={styles.message}>{error}</Text>
+        // Scrolls once there are more results than fit. "handled" lets a tap
+        // on a result go straight to it, instead of the first tap only
+        // closing the keyboard.
+        <ScrollView
+          style={styles.results}
+          contentContainerStyle={styles.resultsContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {savedMatches.map(place => (
+            <Pressable
+              key={`saved-${place.id}`}
+              onPress={() => pick(place)}
+              style={({ pressed }) => [styles.result, pressed && styles.pressed]}
+            >
+              <Ionicons name="bookmark" size={18} color={colours.orange} />
+              <View style={styles.resultText}>
+                <Text style={styles.resultName} numberOfLines={1}>
+                  {place.name}
+                </Text>
+                <Text style={styles.resultAddress} numberOfLines={1}>
+                  {place.address ?? 'Saved place'}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+
+          {message !== '' ? (
+            <Text style={styles.message}>{message}</Text>
           ) : (
             results.map(place => (
               <Pressable
@@ -145,7 +194,7 @@ export default function SearchBar({ getNear, onSelect, onClear }) {
               </Pressable>
             ))
           )}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -166,11 +215,12 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: colours.ink, paddingVertical: 0 },
   results: {
     marginTop: 8,
+    maxHeight: 300,
     backgroundColor: colours.surface,
     borderRadius: 14,
-    paddingVertical: 6,
     ...floating,
   },
+  resultsContent: { paddingVertical: 6 },
   result: {
     flexDirection: 'row',
     alignItems: 'center',

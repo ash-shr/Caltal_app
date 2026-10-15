@@ -26,8 +26,9 @@ export function reminderChannel() {
     ready = Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
       name: 'Reminders',
       description: 'Time and place reminders for your tasks',
+      // HIGH comes with the phone's normal notification sound; naming a sound
+      // here would make Android look for a custom sound file instead.
       importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
     }).then(
       () => REMINDER_CHANNEL,
