@@ -1,3 +1,5 @@
+import { RADIUS_MAX, RADIUS_MIN } from './config';
+
 // The thumb and track are styled with arbitrary variants because a range input
 // exposes them only as vendor pseudo-elements; there is no Tailwind class for
 // them.
@@ -21,22 +23,26 @@ const SLIDER =
   '[&::-moz-range-thumb]:bg-stone-800';
 
 // A plain controlled input: every movement updates the parent, so the circle on
-// the map follows the slider immediately.
-function RadiusSlider({ label, value, onChange }) {
+// the map follows the slider immediately. onCommit (optional) runs once, when
+// the slider is let go.
+function RadiusSlider({ label, value, onChange, onCommit }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-stone-500">{label}</span>
-        <span className="text-xs tabular-nums text-stone-500">{value}m</span>
+        <span className="text-xs font-medium tabular-nums text-stone-700">{value} m</span>
       </div>
 
       <input
         type="range"
-        min="50"
-        max="2000"
+        min={RADIUS_MIN}
+        max={RADIUS_MAX}
         step="10"
         value={value}
         onChange={e => onChange(Number(e.target.value))}
+        onPointerUp={e => onCommit?.(Number(e.target.value))}
+        onKeyUp={e => onCommit?.(Number(e.target.value))}
+        aria-label={label}
         className={SLIDER}
       />
     </div>

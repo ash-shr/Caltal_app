@@ -22,24 +22,35 @@ public class SecurityConfig {
     // Limits where the browser will load anything from. The session token lives
     // in localStorage, which any script on the page can read — so the real
     // defence is making sure no script but our own can ever run. Inline styles
-    // are allowed because Leaflet and React's style props both rely on them;
-    // scripts get no such exception.
+    // are allowed because the map library and React's style props both rely on
+    // them; scripts get no such exception.
     //
     // accounts.google.com/gsi/ is the one outside origin allowed to run code: it's
     // Google's own sign-in script, and the button it draws lives in an iframe.
     // The paths are as narrow as Google's documentation allows.
+    //
+    // api.maptiler.com serves the map (its style, tiles, fonts and icons, all
+    // fetched by script) and the place search. The map library's background
+    // worker is a file on this site, so 'self' covers it.
     private static final String CONTENT_SECURITY_POLICY = String.join("; ",
             "default-src 'self'",
             "script-src 'self' https://accounts.google.com/gsi/client",
             "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
             "frame-src https://accounts.google.com/gsi/",
-            "img-src 'self' data: https://api.maptiler.com https://unpkg.com",
-            "connect-src 'self' https://accounts.google.com/gsi/",
+            "img-src 'self' data: blob: https://api.maptiler.com",
+            "connect-src 'self' https://accounts.google.com/gsi/ https://api.maptiler.com",
+            "worker-src 'self'",
             "font-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
             "frame-ancestors 'none'");
+
+    // The website's own pages (WebPageController). Public, like the rest of the
+    // React app: what's behind sign-in is the API they call, not the page.
+    static final String[] PAGES = {
+            "/reset-password", "/verify-email", "/settings", "/places", "/terms"
+    };
 
     // Only the browser features Caltal actually uses: location for geofencing,
     // camera and microphone for the planned voice and video notes.
@@ -81,10 +92,9 @@ public class SecurityConfig {
                         // by file type rather than listing each file by name.
                         .requestMatchers(HttpMethod.GET,
                                 "/", "/index.html", "/assets/**",
-                                "/*.png", "/*.webp", "/*.svg", "/*.ico",
-                                // Pages that emailed links open (WebPageController)
-                                "/reset-password", "/verify-email")
+                                "/*.png", "/*.webp", "/*.svg", "/*.ico")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, PAGES).permitAll()
                         .anyRequest().authenticated())
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))

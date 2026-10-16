@@ -1,145 +1,140 @@
-import { useState, useEffect } from 'react';
-import { parseISO, format } from 'date-fns';
-import TaskForm from './TaskForm';
-import { updateTask, completeTask, deleteTask } from './api';
+import { useState } from 'react';
+import Icon from './icons';
+import { longDay, shortTime } from './dates';
+import { hasPlace } from './useTasks';
+import {
+  buttonClass,
+  dangerButtonClass,
+  quietDangerButtonClass,
+  secondaryButtonClass,
+} from './ui';
 
-// A slide-over panel showing one task in full, with everything about it editable.
-// It stays mounted so it can animate out; `task` going null closes it.
-function TaskDetail({ task, onClose, onChanged }) {
-    // Hold on to the last task so the panel still has something to draw while it
-    // slides away. Adjusting state during render is React's own pattern for
-    // deriving from a prop: it re-renders immediately, before anything paints,
-    // rather than causing the extra pass an effect would.
-    const [lastTask, setLastTask] = useState(task);
+const TYPE_LABELS = {
+  LOCATION: 'Reminds you at a place',
+  TIME: 'Reminds you at a time',
+  BOTH: 'Reminds you at a place and a time',
+  NONE: 'No reminder',
+};
 
-    if (task && task !== lastTask) {
-        setLastTask(task);
+function Line({ icon, children }) {
+  return (
+    <div className="flex items-start gap-3 text-sm text-stone-600">
+      <Icon name={icon} size={18} className="mt-px flex-none text-stone-400" />
+      <span className="leading-relaxed">{children}</span>
+    </div>
+  );
+}
+
+// One task in full, shown in the panel in place of the calendar.
+function TaskDetail({ task, onBack, onEdit, onComplete, onDelete, onShowOnMap }) {
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  // Deleting can't be undone, so it takes a second click to confirm
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const run = async (which, action) => {
+    setBusy(which);
+    setError('');
+    try {
+      await action();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy('');
     }
+  };
 
-    const shown = task ?? lastTask;
+  return (
+    <div className="space-y-6">
+      <button
+        type="button"
+        onClick={onBack}
+        className="-ml-1 flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-stone-800"
+      >
+        <Icon name="back" size={16} />
+        Calendar
+      </button>
 
-    // Close on Escape, the way any dialog should.
-    useEffect(() => {
-        if (!task) return;
+      <h2
+        className={
+          'text-xl font-semibold tracking-tight ' +
+          (task.complete ? 'text-stone-400 line-through' : 'text-stone-800')
+        }
+      >
+        {task.name}
+      </h2>
 
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') onClose();
-        };
-
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [task, onClose]);
-
-    const open = Boolean(task);
-
-    const act = (action) => {
-        action(shown.id)
-            .then(() => {
-                onChanged();
-                onClose();
-            })
-            .catch(() => {
-                // The panel closing on a failure would hide the problem, so keep it open
-            });
-    };
-
-    return (
-        <>
-            {/* Backdrop. pointer-events-none while closed so it can't swallow clicks. */}
-            <div
-                onClick={onClose}
-                className={
-                    'fixed inset-0 z-40 bg-stone-900/20 backdrop-blur-sm ' +
-                    'transition-opacity duration-300 ' +
-                    (open ? 'opacity-100' : 'pointer-events-none opacity-0')
-                }
-            />
-
-            <aside
-                className={
-                    'fixed inset-y-0 right-0 z-50 w-full max-w-md overflow-y-auto ' +
-                    'border-l border-stone-200 bg-stone-50 shadow-xl ' +
-                    'transition-transform duration-300 ease-out ' +
-                    (open ? 'translate-x-0' : 'translate-x-full')
-                }
+      <div className="space-y-3">
+        <Line icon="calendar">{longDay(task.dueDate)}</Line>
+        <Line icon="bell">{TYPE_LABELS[task.reminderType] ?? 'Reminder'}</Line>
+        {task.remindAt && <Line icon="time">At {shortTime(task.remindAt)}</Line>}
+        {hasPlace(task) && (
+          <Line icon="location">
+            {`Within ${task.radius} m of its pin · `}
+            <button
+              type="button"
+              onClick={onShowOnMap}
+              className="text-caltal underline-offset-2 hover:underline"
             >
-                {shown && (
-                    <div className="px-6 py-8">
-                        <div className="mb-8 flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-stone-400">
-                                    {format(parseISO(shown.dueDate), 'EEEE d MMMM')}
-                                </p>
-                                <h2 className="mt-1 text-xl font-medium tracking-tight text-stone-800">
-                                    {shown.name}
-                                </h2>
-                                {shown.complete && (
-                                    <p className="mt-1 text-xs text-stone-500">Completed</p>
-                                )}
-                            </div>
+              show on map
+            </button>
+          </Line>
+        )}
+        {task.triggerLatitude != null && (
+          <Line icon="navigate">Reminds you {task.triggerRadius} m from a second place</Line>
+        )}
+        {task.complete && <Line icon="check">Done</Line>}
+      </div>
 
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                aria-label="Close"
-                                className="flex-none rounded-lg p-2 text-stone-400
-                                           transition-colors hover:bg-stone-200 hover:text-stone-700"
-                            >
-                                <svg viewBox="0 0 14 14" className="h-4 w-4" aria-hidden="true">
-                                    <path
-                                        d="M3 3l8 8M11 3l-8 8"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
+      <div className="space-y-2">
+        <button type="button" onClick={onEdit} className={buttonClass}>
+          Edit
+        </button>
 
-                        {/* key forces a fresh form when a different task is opened */}
-                        <TaskForm
-                            key={shown.id}
-                            task={shown}
-                            dueDate={parseISO(shown.dueDate)}
-                            showDate
-                            submitLabel="Save changes"
-                            onSubmit={payload =>
-                                updateTask(shown.id, payload).then(() => {
-                                    onChanged();
-                                    onClose();
-                                })
-                            }
-                        />
+        {!task.complete && (
+          <button
+            type="button"
+            onClick={() => run('complete', onComplete)}
+            disabled={busy !== ''}
+            className={secondaryButtonClass}
+          >
+            {busy === 'complete' ? 'Marking…' : 'Mark as done'}
+          </button>
+        )}
 
-                        <div className="mt-8 flex items-center justify-between border-t border-stone-200 pt-6">
-                            {!shown.complete ? (
-                                <button
-                                    type="button"
-                                    onClick={() => act(completeTask)}
-                                    className="text-sm text-stone-600 underline underline-offset-4
-                                               transition-colors hover:text-stone-900"
-                                >
-                                    Mark complete
-                                </button>
-                            ) : (
-                                <span className="text-sm text-stone-400">Done</span>
-                            )}
+        {confirmingDelete ? (
+          <div className="space-y-2 rounded-2xl bg-red-50 p-3">
+            <p className="text-sm text-red-700">{`Delete "${task.name}" for good?`}</p>
+            <button
+              type="button"
+              onClick={() => run('delete', onDelete)}
+              disabled={busy !== ''}
+              className={dangerButtonClass}
+            >
+              {busy === 'delete' ? 'Deleting…' : 'Delete'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="w-full py-1 text-sm text-stone-500 hover:text-stone-800"
+            >
+              Keep it
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className={quietDangerButtonClass}
+          >
+            Delete task
+          </button>
+        )}
+      </div>
 
-                            <button
-                                type="button"
-                                onClick={() => act(deleteTask)}
-                                className="text-sm text-red-600 underline underline-offset-4
-                                           transition-colors hover:text-red-700"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </aside>
-        </>
-    );
+      {error !== '' && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 export default TaskDetail;

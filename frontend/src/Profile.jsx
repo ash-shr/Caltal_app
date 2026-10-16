@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getMe, sendConfirmationEmail } from './api';
+import { navigate } from './router';
 
 // "Ashutosh Sharma" -> "AS", "Lucki" -> "L"
 function initialsOf(name) {
@@ -67,8 +68,8 @@ function Profile({ user, onSignOut }) {
                 aria-haspopup="true"
                 aria-expanded={open}
                 aria-label="Account"
-                className="flex h-10 w-10 items-center justify-center rounded-full
-                           bg-stone-800 text-sm font-medium text-white
+                className="flex h-12 w-12 items-center justify-center rounded-full
+                           bg-stone-800 text-sm font-medium text-white shadow-lg ring-2 ring-white
                            transition-all duration-200 hover:bg-stone-700 active:scale-95"
             >
                 {initialsOf(user.name)}
@@ -76,7 +77,7 @@ function Profile({ user, onSignOut }) {
 
             <div
                 className={
-                    'absolute right-0 top-12 z-30 w-60 origin-top-right rounded-2xl border ' +
+                    'absolute right-0 top-14 z-40 w-64 origin-top-right rounded-2xl border ' +
                     'border-stone-200 bg-white p-1 shadow-lg transition-all duration-200 ' +
                     (open
                         ? 'scale-100 opacity-100'
@@ -105,6 +106,27 @@ function Profile({ user, onSignOut }) {
                         </div>
                     )}
                 </div>
+
+                <div className="my-1 h-px bg-stone-100" />
+
+                {[
+                    ['/places', 'Saved places'],
+                    ['/settings', 'Settings'],
+                    ['/terms', 'Terms'],
+                ].map(([path, label]) => (
+                    <button
+                        key={path}
+                        type="button"
+                        onClick={() => {
+                            setOpen(false);
+                            navigate(path);
+                        }}
+                        className="w-full rounded-xl px-3 py-2 text-left text-sm text-stone-600
+                                   transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+                    >
+                        {label}
+                    </button>
+                ))}
 
                 <div className="my-1 h-px bg-stone-100" />
 

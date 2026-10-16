@@ -1,24 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getNearbyTasks } from './api';
-
-// Distance in metres between two points on the globe. The same Haversine the
-// backend uses to decide what counts as nearby — repeated here only to show how
-// far away something is, and to ignore tiny GPS jitter.
-function distanceBetween(fromLat, fromLon, toLat, toLon) {
-    const EARTH_RADIUS_METRES = 6371000;
-    const toRadians = degrees => (degrees * Math.PI) / 180;
-
-    const latitudeDifference = toRadians(toLat - fromLat);
-    const longitudeDifference = toRadians(toLon - fromLon);
-
-    const a =
-        Math.sin(latitudeDifference / 2) ** 2 +
-        Math.cos(toRadians(fromLat)) *
-            Math.cos(toRadians(toLat)) *
-            Math.sin(longitudeDifference / 2) ** 2;
-
-    return EARTH_RADIUS_METRES * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { distanceBetween } from './geo';
 
 const GEOLOCATION_ERRORS = {
     1: 'Location permission was denied. You can allow it in your browser settings.',
@@ -30,7 +12,13 @@ const GEOLOCATION_ERRORS = {
 // hammer the API for nothing, so ignore movement smaller than this.
 const SIGNIFICANT_MOVE_METRES = 25;
 
-function NearMe({ refreshKey, onOpen }) {
+// Watches where you are while this tab is open, lists the tasks you're within
+// range of, and pops up a browser notification as you come into range of one.
+// The phone app does this in the background; a website can only do it while
+// it's open.
+//   refreshKey  changes whenever the tasks do, so the list is checked again
+//   onPosition  told where you are (or null once stopped), for the map's dot
+function NearMe({ refreshKey, onOpen, onPosition }) {
     const [coords, setCoords] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [status, setStatus] = useState('idle');
@@ -48,6 +36,7 @@ function NearMe({ refreshKey, onOpen }) {
             watchId.current = null;
         }
         setWatching(false);
+        onPosition?.(null);
     };
 
     const start = () => {
@@ -90,6 +79,7 @@ function NearMe({ refreshKey, onOpen }) {
 
                 lastFix.current = next;
                 setCoords(next);
+                onPosition?.(next);
             },
             failure => {
                 setError(GEOLOCATION_ERRORS[failure.code] ?? 'Could not get your location.');
@@ -162,7 +152,7 @@ function NearMe({ refreshKey, onOpen }) {
     return (
         <section>
             <div className="mb-4 flex items-baseline justify-between gap-4">
-                <h2 className="text-xs font-medium uppercase tracking-widest text-stone-400">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400">
                     Near me
                 </h2>
 

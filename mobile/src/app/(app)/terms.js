@@ -1,10 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colours } from '../../theme';
 
-// Basic placeholder terms in plain English. Before Caltal goes on the App Store
-// or Google Play, these need replacing with properly written terms and a
-// privacy policy.
-const UPDATED = '15 October 2026';
+// Basic placeholder terms in plain English: the same words as the website's
+// Terms page (frontend/src/TermsPage.jsx), so change both together. Before
+// Caltal goes on the App Store or Google Play, these need replacing with
+// properly written terms and a privacy policy.
+const UPDATED = '16 October 2026';
 
 const SECTIONS = [
   {
@@ -26,15 +27,17 @@ const SECTIONS = [
     heading: 'Your tasks and your location',
     body:
       'Caltal stores the tasks you create, including their names, dates, times and any places you pin ' +
-      'on the map. Your phone checks your location itself to know when you reach one of those places — ' +
-      'your live location is not sent to or stored on Caltal’s server.',
+      'on the map. Your phone or browser checks your location itself to know when you reach one of ' +
+      'those places. Your live location is not sent to or stored on Caltal’s server. The map and ' +
+      'the place search come from MapTiler, which sees the part of the map you look at and what ' +
+      'you search for.',
   },
   {
     heading: 'Reminders are not guaranteed',
     body:
-      'Phones limit what apps can do in the background, so a reminder can arrive late or not at all — ' +
-      'for example with low battery, no signal, or location turned off. Please don’t rely on Caltal ' +
-      'for anything urgent, medical or safety-related.',
+      'Phones limit what apps can do in the background, and the website can only remind you while it ' +
+      'is open, so a reminder can arrive late or not at all: for example with low battery, no signal, ' +
+      'or location turned off. Please don’t rely on Caltal for anything urgent, medical or safety-related.',
   },
   {
     heading: 'Using Caltal fairly',

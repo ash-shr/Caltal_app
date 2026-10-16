@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import Calendar from './Calendar';
-import TaskList from './TaskList';
-import NearMe from './NearMe';
-import TaskForm from './TaskForm';
-import TaskDetail from './TaskDetail';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Auth from './Auth';
-import Splash from './Splash';
-import Profile from './Profile';
+import PlacesPage from './PlacesPage';
 import ResetPassword from './ResetPassword';
+import SettingsPage from './SettingsPage';
+import Splash from './Splash';
+import TermsPage from './TermsPage';
 import VerifyEmail from './VerifyEmail';
-import { createTask, getStoredUser, logout } from './api';
+import { getStoredUser, logout } from './api';
+import { navigate, usePath } from './router';
+import { usePlaces } from './usePlaces';
+import { useTasks } from './useTasks';
+
+// The map home pulls in the map library, the biggest part of the site by far.
+// Loading it separately means the sign-in page and the pages emailed links
+// open don't have to wait for it.
+const Home = lazy(() => import('./Home'));
 
 // How long the splash stays up at minimum. Long enough to read as deliberate
 // rather than a flicker, short enough not to be in the way.
@@ -19,17 +23,9 @@ const SPLASH_MS = 1400;
 function App() {
   const [user, setUser] = useState(getStoredUser());
   const [booting, setBooting] = useState(true);
+  const path = usePath();
 
-  const [selected, setSelected] = useState(new Date());
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [openTask, setOpenTask] = useState(null);
-
-  // Bumping this remounts the new-task form, which is how it gets cleared.
-  const [formKey, setFormKey] = useState(0);
-
-  const refresh = () => setRefreshKey(key => key + 1);
-
-  // Every reload starts on the splash, the way an app does.
+  // Every reload starts on the splash, the way an app does
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), SPLASH_MS);
     return () => clearTimeout(timer);
@@ -47,18 +43,13 @@ function App() {
     return <Splash />;
   }
 
-  // The two pages emailed links open. There are only these, so a router
-  // would be more machinery than it's worth.
-  const page = window.location.pathname;
-
-  if (page === '/reset-password') {
+  // The two pages emailed links open
+  if (path === '/reset-password') {
     return <ResetPassword />;
   }
 
-  if (page === '/verify-email') {
-    return (
-      <VerifyEmail user={user} onAuthenticated={setUser} onSignOut={handleSignOut} />
-    );
+  if (path === '/verify-email') {
+    return <VerifyEmail user={user} onAuthenticated={setUser} onSignOut={handleSignOut} />;
   }
 
   if (!user) {
@@ -66,73 +57,51 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-800 antialiased">
-      <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+    <SignedIn
+      user={user}
+      path={path}
+      onUserChange={setUser}
+      onSignOut={handleSignOut}
+      onAccountDeleted={() => {
+        setUser(null);
+        navigate('/');
+      }}
+    />
+  );
+}
 
-        <header className="mb-10 flex items-start justify-between sm:mb-14">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt=""
-              className="h-20 w-20"
-            />
-            <div>
-              <h1 className="text-2xl font-medium tracking-tight">Caltal</h1>
-              <p className="mt-0.5 text-sm text-stone-500">Tasks that find you</p>
-            </div>
-          </div>
+// Everything behind sign-in. Tasks and saved places are loaded once here and
+// shared by the map and the pages, so they always agree. The map stays
+// loaded under the pages (/settings, /places, /terms), which lie on top of it.
+function SignedIn({ user, path, onUserChange, onSignOut, onAccountDeleted }) {
+  const tasks = useTasks();
+  const places = usePlaces();
+  const home = useRef(null);
 
-          <Profile user={user} onSignOut={handleSignOut} />
-        </header>
+  return (
+    <Suspense fallback={<Splash />}>
+      <Home ref={home} user={user} tasks={tasks} places={places} onSignOut={onSignOut} />
 
-        {/* Calendar leads; everything else sits beside it on a wide screen and
-            stacks beneath it on a narrow one. */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
+      {path === '/settings' && (
+        <SettingsPage
+          user={user}
+          onUserChange={onUserChange}
+          onAccountDeleted={onAccountDeleted}
+        />
+      )}
 
-          <Calendar
-            selected={selected}
-            onSelect={setSelected}
-            refreshKey={refreshKey}
-          />
+      {path === '/places' && (
+        <PlacesPage
+          places={places}
+          onShowOnMap={place => {
+            navigate('/');
+            home.current?.showPlace(place);
+          }}
+        />
+      )}
 
-          <aside className="space-y-10">
-            <NearMe refreshKey={refreshKey} onOpen={setOpenTask} />
-
-            <TaskList
-              selected={selected}
-              refreshKey={refreshKey}
-              onChanged={refresh}
-              onOpen={setOpenTask}
-            />
-
-            <section>
-              <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-stone-400">
-                New task on {format(selected, 'd MMMM')}
-              </h2>
-
-              <TaskForm
-                key={formKey}
-                dueDate={selected}
-                submitLabel="Add task"
-                onSubmit={payload =>
-                  createTask(payload).then(() => {
-                    setFormKey(key => key + 1);
-                    refresh();
-                  })
-                }
-              />
-            </section>
-          </aside>
-
-        </div>
-      </div>
-
-      <TaskDetail
-        task={openTask}
-        onClose={() => setOpenTask(null)}
-        onChanged={refresh}
-      />
-    </div>
+      {path === '/terms' && <TermsPage />}
+    </Suspense>
   );
 }
 

@@ -16,10 +16,11 @@ export function getStoredUser() {
 
 function storeSession(response) {
   localStorage.setItem(TOKEN_KEY, response.token);
-  localStorage.setItem(USER_KEY, JSON.stringify({
-    name: response.name,
-    email: response.email,
-  }));
+  storeUser(response);
+}
+
+function storeUser({ name, email }) {
+  localStorage.setItem(USER_KEY, JSON.stringify({ name, email }));
 }
 
 export function clearSession() {
@@ -113,6 +114,38 @@ export function getMe() {
   return request(`${BASE_URL}/me`);
 }
 
+export async function updateName(name) {
+  const me = await request(`${BASE_URL}/me`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+
+  storeUser(me);
+  return me;
+}
+
+// Changing the password ends every session, this one included, so the server
+// sends back a fresh token to keep this browser signed in.
+export async function changePassword(currentPassword, newPassword) {
+  const result = await request(`${BASE_URL}/me/password`, {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
+  storeSession(result);
+  return result;
+}
+
+// Google-only accounts have no password, so `password` may be null
+export async function deleteAccount(password) {
+  await request(`${BASE_URL}/me`, {
+    method: 'DELETE',
+    body: password ? JSON.stringify({ password }) : undefined,
+  });
+
+  clearSession();
+}
+
 export function sendConfirmationEmail() {
   return request(`${BASE_URL}/me/verify-email`, { method: 'POST' });
 }
@@ -126,10 +159,6 @@ export function confirmEmail(token) {
 
 export function getAllTasks() {
   return request(`${BASE_URL}/tasks`);
-}
-
-export function getTasksOnDate(date) {
-  return request(`${BASE_URL}/tasks/on?date=${date}`);
 }
 
 export function createTask(task) {
@@ -156,6 +185,23 @@ export function updateTask(id, task) {
 
 export function getNearbyTasks(latitude, longitude) {
   return request(`${BASE_URL}/tasks/nearby?lat=${latitude}&lon=${longitude}`);
+}
+
+// Saved places (Home, Work…)
+export function getPlaces() {
+  return request(`${BASE_URL}/places`);
+}
+
+export function createPlace(place) {
+  return request(`${BASE_URL}/places`, { method: 'POST', body: JSON.stringify(place) });
+}
+
+export function updatePlace(id, place) {
+  return request(`${BASE_URL}/places/${id}`, { method: 'PUT', body: JSON.stringify(place) });
+}
+
+export function deletePlace(id) {
+  return request(`${BASE_URL}/places/${id}`, { method: 'DELETE' });
 }
 
 // Revokes every token this account holds, on every device. The local copy is

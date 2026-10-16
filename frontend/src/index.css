@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+/* The orange from the logo, shared with the phone app (mobile/src/theme.js) */
+@theme {
+  --color-caltal: #fb8a28;
+  --color-caltal-soft: #fff1e5;
+}
+
+/* The map's own controls, toned to match the rest of the page */
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12) !important;
+}
+
+/* On a phone the sheet covers the bottom of the map, so the map's credits
+   (which must stay visible) move up under the buttons on the right, and the
+   zoom buttons go: pinching does that */
+@media (max-width: 767px) {
+  .maplibregl-ctrl-bottom-right {
+    top: 116px;
+    bottom: auto;
+  }
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
+    display: none;
+  }
+}
