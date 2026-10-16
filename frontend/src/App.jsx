@@ -8,6 +8,8 @@ import TaskDetail from './TaskDetail';
 import Auth from './Auth';
 import Splash from './Splash';
 import Profile from './Profile';
+import ResetPassword from './ResetPassword';
+import VerifyEmail from './VerifyEmail';
 import { createTask, getStoredUser, logout } from './api';
 
 // How long the splash stays up at minimum. Long enough to read as deliberate
@@ -43,6 +45,20 @@ function App() {
 
   if (booting) {
     return <Splash />;
+  }
+
+  // The two pages emailed links open. There are only these, so a router
+  // would be more machinery than it's worth.
+  const page = window.location.pathname;
+
+  if (page === '/reset-password') {
+    return <ResetPassword />;
+  }
+
+  if (page === '/verify-email') {
+    return (
+      <VerifyEmail user={user} onAuthenticated={setUser} onSignOut={handleSignOut} />
+    );
   }
 
   if (!user) {

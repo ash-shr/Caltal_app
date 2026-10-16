@@ -89,6 +89,41 @@ export async function login(email, password) {
   return result;
 }
 
+// Always "done": the server doesn't say whether the email has an account.
+export function requestPasswordReset(email) {
+  return request(`${BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+// `token` is the secret from the emailed link. A successful reset also signs
+// this browser in.
+export async function resetPassword(token, password) {
+  const result = await request(`${BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+
+  storeSession(result);
+  return result;
+}
+
+export function getMe() {
+  return request(`${BASE_URL}/me`);
+}
+
+export function sendConfirmationEmail() {
+  return request(`${BASE_URL}/me/verify-email`, { method: 'POST' });
+}
+
+export function confirmEmail(token) {
+  return request(`${BASE_URL}/me/verify-email/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
 export function getAllTasks() {
   return request(`${BASE_URL}/tasks`);
 }

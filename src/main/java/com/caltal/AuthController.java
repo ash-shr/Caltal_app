@@ -14,10 +14,15 @@ public class AuthController {
 
     private final AuthService authService;
     private final CurrentUserService currentUser;
+    private final AccountEmailService accountEmails;
 
-    public AuthController(AuthService authService, CurrentUserService currentUser) {
+    public AuthController(
+            AuthService authService,
+            CurrentUserService currentUser,
+            AccountEmailService accountEmails) {
         this.authService = authService;
         this.currentUser = currentUser;
+        this.accountEmails = accountEmails;
     }
 
     @PostMapping("/register")
@@ -47,6 +52,20 @@ public class AuthController {
         authService.logout(currentUser.get());
     }
 
+    // Always "done", whether or not the email has an account. See the note on
+    // AccountEmailService.requestPasswordReset.
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        accountEmails.requestPasswordReset(request.email());
+    }
+
+    // From the page the reset email links to. Signs the person straight in.
+    @PostMapping("/reset-password")
+    public AuthResponse resetPassword(@RequestBody ResetPasswordRequest request) {
+        return accountEmails.resetPassword(request.token(), request.password());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleInvalidRequest(IllegalArgumentException exception) {
@@ -63,5 +82,11 @@ public class AuthController {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public String handleBadCredentials(BadCredentialsException exception) {
         return exception.getMessage();
+    }
+
+    public record ForgotPasswordRequest(String email) {
+    }
+
+    public record ResetPasswordRequest(String token, String password) {
     }
 }

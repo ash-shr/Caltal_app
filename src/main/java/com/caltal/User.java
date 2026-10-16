@@ -123,6 +123,19 @@ public class User {
         revokeTokens();
     }
 
+    // A password set from an emailed reset link. Whoever used the link can read
+    // this account's inbox, so the address is proven real as well. Every old
+    // session ends, as with any new password: if the reset happened because
+    // someone else had the old password, they're now signed out.
+    public void resetPassword(String newPasswordHash) {
+        changePassword(newPasswordHash);
+        emailVerified = true;
+    }
+
+    public void markEmailVerified() {
+        emailVerified = true;
+    }
+
     public void setEmail(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email must not be empty");

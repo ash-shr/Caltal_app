@@ -81,7 +81,9 @@ public class SecurityConfig {
                         // by file type rather than listing each file by name.
                         .requestMatchers(HttpMethod.GET,
                                 "/", "/index.html", "/assets/**",
-                                "/*.png", "/*.webp", "/*.svg", "/*.ico")
+                                "/*.png", "/*.webp", "/*.svg", "/*.ico",
+                                // Pages that emailed links open (WebPageController)
+                                "/reset-password", "/verify-email")
                         .permitAll()
                         .anyRequest().authenticated())
                 .headers(headers -> headers

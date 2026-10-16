@@ -1,17 +1,32 @@
 import { useState } from 'react';
-import { login, register, loginWithGoogle } from './api';
+import { login, register, loginWithGoogle, requestPasswordReset } from './api';
 import Splash from './Splash';
 import GoogleButton from './GoogleButton';
+import { buttonClass, inputClass, linkButtonClass } from './ui';
 
-function Auth({ onAuthenticated }) {
-  const [mode, setMode] = useState('login');
+// notice: a line shown above the form, saying why sign-in is needed here
+function Auth({ onAuthenticated, notice }) {
+  // "/#forgot" opens straight on "Forgot password" (a dead reset link sends
+  // people here)
+  const [mode, setMode] = useState(() =>
+    window.location.hash === '#forgot' ? 'forgot' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // The address a reset link was asked for, once it has been
+  const [resetSentTo, setResetSentTo] = useState('');
+
   const isRegistering = mode === 'register';
+  const isForgot = mode === 'forgot';
+
+  const switchTo = (next) => {
+    setMode(next);
+    setError('');
+    setResetSentTo('');
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -24,6 +39,21 @@ function Auth({ onAuthenticated }) {
         : await login(email, password);
 
       onAuthenticated(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleForgot = async (event) => {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+
+    try {
+      await requestPasswordReset(email);
+      setResetSentTo(email.trim());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -44,14 +74,11 @@ function Auth({ onAuthenticated }) {
     }
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm ' +
-    'text-stone-800 placeholder:text-stone-400 transition-colors duration-200 ' +
-    'focus:border-stone-400 focus:outline-none';
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-stone-50 px-6">
-      <Splash label="Signing you in…" visible={busy} />
+      {/* Asking for a reset link is quick and signs nobody in, so it just
+          shows "Sending…" on its button instead */}
+      <Splash label="Signing you in…" visible={busy && !isForgot} />
 
       <div className="w-full max-w-sm">
 
@@ -66,76 +93,130 @@ function Auth({ onAuthenticated }) {
           <p className="mt-1 text-sm text-stone-500">Tasks that find you</p>
         </div>
 
-        <GoogleButton onCredential={handleGoogle} onError={setError} />
-
-        {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-          <div className="my-6 flex items-center gap-3 text-xs text-stone-400">
-            <span className="h-px flex-1 bg-stone-200" />
-            or with email
-            <span className="h-px flex-1 bg-stone-200" />
-          </div>
+        {notice && (
+          <p className="mb-6 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+            {notice}
+          </p>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {isRegistering && (
-            <input
-              className={inputClass}
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Your name"
-              maxLength={100}
-              autoComplete="name"
-            />
-          )}
+        {isForgot ? (
+          resetSentTo ? (
+            <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm leading-relaxed text-stone-600">
+              <p className="mb-1 font-medium text-stone-800">Check your email</p>
+              {`If there's a Caltal account for ${resetSentTo}, a link to choose a new `
+                + 'password is on its way. It works for one hour. Check your spam folder '
+                + "if it hasn't arrived in a few minutes."}
+            </div>
+          ) : (
+            <form onSubmit={handleForgot} className="space-y-3">
+              <p className="text-sm leading-relaxed text-stone-500">
+                {"Enter your account's email address and we'll send you a link to "
+                  + 'choose a new password.'}
+              </p>
 
-          <input
-            className={inputClass}
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Email"
-            maxLength={254}
-            autoComplete="email"
-          />
+              <input
+                className={inputClass}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Email"
+                maxLength={254}
+                autoComplete="email"
+                autoFocus
+              />
 
-          <input
-            className={inputClass}
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Password"
-            minLength={isRegistering ? 8 : undefined}
-            maxLength={72}
-            autoComplete={isRegistering ? 'new-password' : 'current-password'}
-          />
+              <button type="submit" disabled={busy} className={buttonClass}>
+                {busy ? 'Sending…' : 'Send reset link'}
+              </button>
+            </form>
+          )
+        ) : (
+          <>
+            <GoogleButton onCredential={handleGoogle} onError={setError} />
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-white
-                       transition-all duration-200 hover:bg-stone-700 active:scale-[0.98]
-                       disabled:opacity-50"
-          >
-            {busy ? 'Please wait…' : isRegistering ? 'Create account' : 'Sign in'}
-          </button>
-        </form>
+            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+              <div className="my-6 flex items-center gap-3 text-xs text-stone-400">
+                <span className="h-px flex-1 bg-stone-200" />
+                or with email
+                <span className="h-px flex-1 bg-stone-200" />
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {isRegistering && (
+                <input
+                  className={inputClass}
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Your name"
+                  maxLength={100}
+                  autoComplete="name"
+                />
+              )}
+
+              <input
+                className={inputClass}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Email"
+                maxLength={254}
+                autoComplete="email"
+              />
+
+              <input
+                className={inputClass}
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Password"
+                minLength={isRegistering ? 8 : undefined}
+                maxLength={72}
+                autoComplete={isRegistering ? 'new-password' : 'current-password'}
+              />
+
+              {!isRegistering && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => switchTo('forgot')}
+                    className="text-xs text-stone-500 underline-offset-2 transition-colors
+                               hover:text-stone-800 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              <button type="submit" disabled={busy} className={buttonClass}>
+                {busy ? 'Please wait…' : isRegistering ? 'Create account' : 'Sign in'}
+              </button>
+            </form>
+          </>
+        )}
 
         {error && (
           <p className="mt-3 text-center text-sm text-red-600">{error}</p>
         )}
 
-        <p className="mt-8 text-center text-sm text-stone-500">
-          {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button
-            onClick={() => {
-              setMode(isRegistering ? 'login' : 'register');
-              setError('');
-            }}
-            className="text-stone-800 underline underline-offset-2 transition-colors hover:text-stone-600"
-          >
-            {isRegistering ? 'Sign in' : 'Create one'}
-          </button>
-        </p>
+        {isForgot ? (
+          <p className="mt-8 text-center text-sm">
+            <button type="button" onClick={() => switchTo('login')} className={linkButtonClass}>
+              Back to sign in
+            </button>
+          </p>
+        ) : (
+          <p className="mt-8 text-center text-sm text-stone-500">
+            {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={() => switchTo(isRegistering ? 'login' : 'register')}
+              className={linkButtonClass}
+            >
+              {isRegistering ? 'Sign in' : 'Create one'}
+            </button>
+          </p>
+        )}
 
       </div>
     </div>

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Splash from '../components/Splash';
-import { login, register } from '../api';
+import { login, register, requestPasswordReset } from '../api';
 import { useSession } from '../session';
 import { colours } from '../theme';
 
@@ -27,7 +27,30 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // The address a reset link was asked for, once it has been
+  const [resetSentTo, setResetSentTo] = useState('');
+
   const signingUp = mode === 'register';
+  const forgot = mode === 'forgot';
+
+  const switchTo = next => {
+    setMode(next);
+    setError('');
+    setResetSentTo('');
+  };
+
+  const sendResetLink = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await requestPasswordReset(email.trim());
+      setResetSentTo(email.trim());
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     setError('');
@@ -65,61 +88,115 @@ export default function SignIn() {
 
           <Text style={styles.title}>Caltal</Text>
           <Text style={styles.subtitle}>
-            {signingUp ? 'Create an account' : 'Welcome back'}
+            {forgot ? 'Forgot your password?' : signingUp ? 'Create an account' : 'Welcome back'}
           </Text>
 
-          <View style={styles.form}>
-            {signingUp && (
+          {forgot ? (
+            <View style={styles.form}>
+              {resetSentTo !== '' ? (
+                <View style={styles.notice}>
+                  <Text style={styles.noticeTitle}>Check your email</Text>
+                  <Text style={styles.noticeText}>
+                    {`If there's a Caltal account for ${resetSentTo}, a link to choose a new `
+                      + "password is on its way. It opens Caltal's website and works for one "
+                      + 'hour. Then come back here and sign in with your new password.'}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.explain}>
+                    {"Enter your account's email address and we'll send you a link to "
+                      + 'choose a new password.'}
+                  </Text>
+
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@mail.com"
+                    placeholderTextColor={colours.faint}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    maxLength={254}
+                    textContentType="emailAddress"
+                  />
+
+                  <Button title="Send reset link" onPress={sendResetLink} busy={busy} />
+                </>
+              )}
+
+              {error !== '' && <Text style={styles.error}>{error}</Text>}
+
+              <Pressable onPress={() => switchTo('login')}>
+                <Text style={styles.switch}>Back to sign in</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.form}>
+              {signingUp && (
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor={colours.faint}
+                  maxLength={100}
+                  textContentType="name"
+                />
+              )}
+
               <TextInput
                 style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Your name"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@mail.com"
                 placeholderTextColor={colours.faint}
-                maxLength={100}
-                textContentType="name"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={254}
+                textContentType="emailAddress"
               />
-            )}
 
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@mail.com"
-              placeholderTextColor={colours.faint}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={254}
-              textContentType="emailAddress"
-            />
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Password"
+                placeholderTextColor={colours.faint}
+                secureTextEntry
+                maxLength={72}
+                textContentType={signingUp ? 'newPassword' : 'password'}
+              />
 
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor={colours.faint}
-              secureTextEntry
-              maxLength={72}
-              textContentType={signingUp ? 'newPassword' : 'password'}
-            />
+              {!signingUp && (
+                <Pressable
+                  onPress={() => switchTo('forgot')}
+                  hitSlop={8}
+                  style={styles.forgotLink}
+                >
+                  <Text style={styles.forgotText}>Forgot password?</Text>
+                </Pressable>
+              )}
 
-            <Button title={signingUp ? 'Sign up' : 'Sign in'} onPress={submit} />
+              <Button title={signingUp ? 'Sign up' : 'Sign in'} onPress={submit} />
 
-            {error !== '' && <Text style={styles.error}>{error}</Text>}
+              {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-            <Pressable onPress={() => setMode(signingUp ? 'login' : 'register')}>
-              <Text style={styles.switch}>
-                {signingUp ? 'I already have an account' : 'I need an account'}
-              </Text>
-            </Pressable>
-          </View>
+              <Pressable onPress={() => switchTo(signingUp ? 'login' : 'register')}>
+                <Text style={styles.switch}>
+                  {signingUp ? 'I already have an account' : 'I need an account'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* The same peeling orange as start-up, while the server answers */}
-      {busy && <Splash />}
+      {/* The same peeling orange as start-up, while the server answers. Not for
+          a reset link: that's quick, and the button shows it's working. */}
+      {busy && !forgot && <Splash />}
     </SafeAreaView>
   );
 }
@@ -153,5 +230,18 @@ const styles = StyleSheet.create({
     color: colours.ink,
   },
   error: { color: colours.danger, fontSize: 14 },
+  forgotLink: { alignSelf: 'flex-end', marginTop: -4 },
+  forgotText: { color: colours.muted, fontSize: 13 },
+  explain: { fontSize: 14, color: colours.body, lineHeight: 20 },
+  notice: {
+    backgroundColor: colours.surface,
+    borderWidth: 1,
+    borderColor: colours.border,
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+  },
+  noticeTitle: { fontSize: 15, fontWeight: '600', color: colours.ink },
+  noticeText: { fontSize: 14, color: colours.body, lineHeight: 20 },
   switch: { color: colours.muted, fontSize: 14, textAlign: 'center', marginTop: 8 },
 });

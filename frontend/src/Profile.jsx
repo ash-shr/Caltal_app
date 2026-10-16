@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getMe, sendConfirmationEmail } from './api';
 
 // "Ashutosh Sharma" -> "AS", "Lucki" -> "L"
 function initialsOf(name) {
@@ -13,6 +14,27 @@ function initialsOf(name) {
 function Profile({ user, onSignOut }) {
     const [open, setOpen] = useState(false);
     const container = useRef(null);
+
+    // Whether the email address is confirmed, checked each time the menu opens
+    const [emailConfirmed, setEmailConfirmed] = useState(true);
+    const [sendState, setSendState] = useState({ status: 'idle', message: '' });
+
+    useEffect(() => {
+        if (!open) return;
+
+        getMe()
+            .then(me => setEmailConfirmed(me.emailVerified))
+            .catch(() => {
+                // Not worth interrupting the menu for; it just won't offer the link
+            });
+    }, [open]);
+
+    const sendLink = () => {
+        setSendState({ status: 'sending', message: '' });
+        sendConfirmationEmail()
+            .then(() => setSendState({ status: 'sent', message: 'Sent. Open the link in the email.' }))
+            .catch(err => setSendState({ status: 'failed', message: err.message }));
+    };
 
     // Close when clicking anywhere else, or on Escape — what every menu does.
     useEffect(() => {
@@ -64,6 +86,24 @@ function Profile({ user, onSignOut }) {
                 <div className="px-3 py-3">
                     <p className="text-sm font-medium text-stone-800">{user.name}</p>
                     <p className="mt-0.5 truncate text-xs text-stone-500">{user.email}</p>
+
+                    {!emailConfirmed && (
+                        <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            <p className="font-medium">Email not confirmed yet</p>
+                            {sendState.status === 'sent' || sendState.status === 'failed' ? (
+                                <p className="mt-1">{sendState.message}</p>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={sendLink}
+                                    disabled={sendState.status === 'sending'}
+                                    className="mt-1 underline underline-offset-2 disabled:opacity-50"
+                                >
+                                    {sendState.status === 'sending' ? 'Sending…' : 'Send confirmation link'}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="my-1 h-px bg-stone-100" />

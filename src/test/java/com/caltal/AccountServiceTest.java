@@ -18,10 +18,11 @@ class AccountServiceTest {
     private final UserRepository users = mock(UserRepository.class);
     private final TaskRepository tasks = mock(TaskRepository.class);
     private final SavedPlaceRepository places = mock(SavedPlaceRepository.class);
+    private final AccountTokenRepository accountTokens = mock(AccountTokenRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
 
-    private final AccountService service = new AccountService(users, tasks, places, encoder, jwt);
+    private final AccountService service = new AccountService(users, tasks, places, accountTokens, encoder, jwt);
 
     private User ash() {
         return new User("ash@example.com", "old-hash", "Ash");
@@ -89,15 +90,16 @@ class AccountServiceTest {
     }
 
     @Test
-    void deletingAnAccountRemovesItsTasksAndPlacesBeforeTheUser() {
+    void deletingAnAccountRemovesItsTasksPlacesAndLinksBeforeTheUser() {
         User user = ash();
         when(encoder.matches("current-pass", "old-hash")).thenReturn(true);
 
         service.deleteAccount(user, "current-pass");
 
-        InOrder order = inOrder(tasks, places, users);
+        InOrder order = inOrder(tasks, places, accountTokens, users);
         order.verify(tasks).deleteAllByOwner(user);
         order.verify(places).deleteAllByOwner(user);
+        order.verify(accountTokens).deleteAllByUser(user);
         order.verify(users).delete(user);
     }
 

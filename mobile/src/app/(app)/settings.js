@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  AppState,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -13,8 +14,15 @@ import {
 } from 'react-native';
 import Constants from 'expo-constants';
 import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
-import { changePassword, deleteAccount, getMe, updateName } from '../../api';
+import {
+  changePassword,
+  deleteAccount,
+  getMe,
+  sendConfirmationEmail,
+  updateName,
+} from '../../api';
 import { usePlaceReminders } from '../../placeReminders';
 import { clearAllReminders } from '../../reminders';
 import { useSession } from '../../session';
@@ -64,7 +72,37 @@ export default function Settings() {
     getMe()
       .then(setMe)
       .catch(() => setAccountError("Your account details couldn't be loaded right now."));
+
+    // The confirmation link is opened in the browser. When the person comes
+    // back to the app, look again, so "Not confirmed" doesn't linger.
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        getMe()
+          .then(setMe)
+          .catch(() => {
+            // Keep showing what was loaded before
+          });
+      }
+    });
+    return () => subscription.remove();
   }, []);
+
+  // ---- Email confirmation ----
+  const [confirmState, setConfirmState] = useState({ busy: false, sent: false, message: '' });
+
+  const sendConfirmation = async () => {
+    setConfirmState({ busy: true, sent: false, message: '' });
+    try {
+      await sendConfirmationEmail();
+      setConfirmState({
+        busy: false,
+        sent: true,
+        message: "Sent. The link opens Caltal's website: sign in there and it's done.",
+      });
+    } catch (failure) {
+      setConfirmState({ busy: false, sent: false, message: failure.message });
+    }
+  };
 
   // ---- Name ----
   const [name, setName] = useState(user?.name ?? '');
@@ -172,6 +210,35 @@ export default function Settings() {
 
           <Text style={styles.rowLabel}>Email</Text>
           <Text style={styles.value}>{user?.email}</Text>
+
+          {me?.emailVerified === true && (
+            <View style={styles.confirmed}>
+              <Ionicons name="checkmark-circle" size={16} color={colours.teal} />
+              <Text style={styles.confirmedText}>Confirmed</Text>
+            </View>
+          )}
+
+          {me?.emailVerified === false && (
+            <View style={styles.stack}>
+              <Text style={styles.hint}>
+                {'Not confirmed yet. Confirming it means you can reset your password '
+                  + 'by email if you ever forget it.'}
+              </Text>
+              {!confirmState.sent && (
+                <Button
+                  title="Send confirmation email"
+                  variant="secondary"
+                  onPress={sendConfirmation}
+                  busy={confirmState.busy}
+                />
+              )}
+              {confirmState.message !== '' && (
+                <Text style={confirmState.sent ? styles.hint : styles.warning}>
+                  {confirmState.message}
+                </Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -350,6 +417,8 @@ const styles = StyleSheet.create({
     color: colours.ink,
   },
   divider: { height: 1, backgroundColor: colours.border, marginVertical: 4 },
+  confirmed: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  confirmedText: { fontSize: 13, color: colours.teal, fontWeight: '500' },
   stack: { gap: 10 },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleText: { flex: 1, gap: 2 },

@@ -97,6 +97,15 @@ export async function login(email, password) {
   return result;
 }
 
+// Emails a reset link if the address has an account. The server answers the
+// same either way, so this can't be used to find out who has signed up.
+export function requestPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 // Tells the server to revoke every token this account holds, then forgets the
 // session here. The local half runs even if the server can't be reached.
 export async function logout() {
@@ -143,6 +152,12 @@ export function deleteTask(id) {
 
 export function getMe() {
   return request('/me');
+}
+
+// Emails (another) link to confirm the account's address. The link opens
+// the website, which asks the person to sign in and then confirms it.
+export function sendConfirmationEmail() {
+  return request('/me/verify-email', { method: 'POST' });
 }
 
 export async function updateName(name) {

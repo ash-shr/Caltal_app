@@ -23,9 +23,10 @@ class AuthServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
     private final GoogleTokenVerifier google = mock(GoogleTokenVerifier.class);
+    private final AccountEmailService accountEmails = mock(AccountEmailService.class);
 
     private AuthService service() {
-        return new AuthService(users, encoder, jwt, google);
+        return new AuthService(users, encoder, jwt, google, accountEmails);
     }
 
     private void googleSays(String token, String subject, String email, String name) {
@@ -93,6 +94,26 @@ class AuthServiceTest {
         assertEquals("a-token", response.getToken());
         assertEquals("ash@example.com", response.getEmail());
         verify(users).save(any(User.class));
+    }
+
+    @Test
+    void signingUpSendsAConfirmationEmail() {
+        when(encoder.encode("longenough1")).thenReturn("hashed");
+
+        service().register("ash@example.com", "longenough1", "Ash");
+
+        ArgumentCaptor<User> created = ArgumentCaptor.forClass(User.class);
+        verify(accountEmails).sendConfirmationAfterSignUp(created.capture());
+        assertEquals("ash@example.com", created.getValue().getEmail());
+        assertFalse(created.getValue().isEmailVerified());
+    }
+
+    @Test
+    void aFailedSignUpSendsNoEmail() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service().register("ash@example.com", "short", "Ash"));
+
+        verify(accountEmails, never()).sendConfirmationAfterSignUp(any(User.class));
     }
 
     @Test

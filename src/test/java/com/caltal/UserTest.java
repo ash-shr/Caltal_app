@@ -48,6 +48,31 @@ class UserTest {
     }
 
     @Test
+    void aPasswordSignUpStartsUnconfirmed() {
+        assertFalse(new User("ash@example.com", "hash", "Ash").isEmailVerified());
+    }
+
+    @Test
+    void resettingThePasswordProvesTheEmailAndEndsOldSessions() {
+        User user = new User("ash@example.com", "old-hash", "Ash");
+
+        user.resetPassword("new-hash");
+
+        assertEquals("new-hash", user.getPasswordHash());
+        assertTrue(user.isEmailVerified());
+        assertEquals(1, user.getTokenVersion());
+    }
+
+    @Test
+    void aGoogleOnlyAccountCanGetAPasswordByResetting() {
+        User user = User.fromGoogle("ash@gmail.com", "Ash", "google-1");
+
+        user.resetPassword("new-hash");
+
+        assertTrue(user.hasPassword());
+    }
+
+    @Test
     void aGoogleAccountStartsVerifiedWithNoPassword() {
         User user = User.fromGoogle("Ash@Gmail.com", "Ash", "google-1");
 

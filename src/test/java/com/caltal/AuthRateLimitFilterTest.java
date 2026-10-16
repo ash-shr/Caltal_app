@@ -50,6 +50,16 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
+    void alsoLimitsTheRequestsThatSendEmailsOrUseEmailedLinks() throws Exception {
+        AuthRateLimitFilter filter = new AuthRateLimitFilter(3, 60);
+        send(filter, "POST", "/api/auth/forgot-password", "1.2.3.4");
+        send(filter, "POST", "/api/auth/reset-password", "1.2.3.4");
+        send(filter, "POST", "/api/me/verify-email", "1.2.3.4");
+
+        assertEquals(429, send(filter, "POST", "/api/me/verify-email/confirm", "1.2.3.4").getStatus());
+    }
+
+    @Test
     void leavesTheRestOfTheApiAlone() throws Exception {
         AuthRateLimitFilter filter = new AuthRateLimitFilter(1, 60);
 

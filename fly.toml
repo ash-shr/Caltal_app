@@ -7,6 +7,12 @@ app = 'caltal'
 primary_region = 'lhr'
 
 [build]
+
+# Settings that aren't secret. Secrets (JWT_SECRET, DB_PASSWORD,
+# RESEND_API_KEY...) are set with `fly secrets set` and never written here.
+[env]
+  APP_URL = 'https://caltal.fly.dev'
+
 [http_service]
   internal_port = 8080
   force_https = true

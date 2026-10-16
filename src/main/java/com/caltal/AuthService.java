@@ -10,6 +10,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final GoogleTokenVerifier googleVerifier;
+    private final AccountEmailService accountEmails;
 
     // A real BCrypt hash to check against when the email doesn't exist. Without
     // it, "no such user" answers instantly while "wrong password" takes the
@@ -21,11 +22,13 @@ public class AuthService {
             UserRepository users,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            GoogleTokenVerifier googleVerifier) {
+            GoogleTokenVerifier googleVerifier,
+            AccountEmailService accountEmails) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.googleVerifier = googleVerifier;
+        this.accountEmails = accountEmails;
         this.timingEqualiser = passwordEncoder.encode("caltal-timing-equaliser");
     }
 
@@ -40,6 +43,8 @@ public class AuthService {
 
         User user = new User(email, passwordEncoder.encode(password), name);
         users.save(user);
+
+        accountEmails.sendConfirmationAfterSignUp(user);
 
         return respondWithToken(user);
     }

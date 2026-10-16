@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,10 +18,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final AccountService accounts;
+    private final AccountEmailService accountEmails;
     private final CurrentUserService currentUser;
 
-    public MeController(AccountService accounts, CurrentUserService currentUser) {
+    public MeController(
+            AccountService accounts,
+            AccountEmailService accountEmails,
+            CurrentUserService currentUser) {
         this.accounts = accounts;
+        this.accountEmails = accountEmails;
         this.currentUser = currentUser;
     }
 
@@ -50,17 +56,43 @@ public class MeController {
         accounts.deleteAccount(currentUser.get(), request == null ? null : request.password());
     }
 
+    // Sends (another) confirmation email
+    @PostMapping("/verify-email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendConfirmationEmail() {
+        accountEmails.sendConfirmation(currentUser.get());
+    }
+
+    // The confirmation link, opened while signed in to this account
+    @PostMapping("/verify-email/confirm")
+    public MeResponse confirmEmail(@RequestBody ConfirmEmailRequest request) {
+        return MeResponse.of(accountEmails.confirmEmail(currentUser.get(), request.token()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleInvalidRequest(IllegalArgumentException exception) {
         return exception.getMessage();
     }
 
+    @ExceptionHandler(TooManyEmailsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public String handleTooManyEmails(TooManyEmailsException exception) {
+        return exception.getMessage();
+    }
+
+    @ExceptionHandler(EmailNotSentException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public String handleEmailNotSent(EmailNotSentException exception) {
+        return exception.getMessage();
+    }
+
     // Records: Java writes the constructor, getters, equals and toString, and
     // Jackson reads and writes them as JSON with the same field names.
-    public record MeResponse(String name, String email, boolean hasPassword) {
+    public record MeResponse(String name, String email, boolean hasPassword, boolean emailVerified) {
         static MeResponse of(User user) {
-            return new MeResponse(user.getName(), user.getEmail(), user.hasPassword());
+            return new MeResponse(
+                    user.getName(), user.getEmail(), user.hasPassword(), user.isEmailVerified());
         }
     }
 
@@ -71,5 +103,8 @@ public class MeController {
     }
 
     public record DeleteAccountRequest(String password) {
+    }
+
+    public record ConfirmEmailRequest(String token) {
     }
 }

@@ -4,7 +4,7 @@ import { colours } from '../../theme';
 // Basic placeholder terms in plain English. Before Caltal goes on the App Store
 // or Google Play, these need replacing with properly written terms and a
 // privacy policy.
-const UPDATED = '2 October 2026';
+const UPDATED = '15 October 2026';
 
 const SECTIONS = [
   {
@@ -18,7 +18,9 @@ const SECTIONS = [
     heading: 'Your account',
     body:
       'You need an account to use Caltal. Please give a real email address and keep your password ' +
-      'to yourself. You are responsible for what happens on your account. One account is for one person.',
+      'to yourself. You are responsible for what happens on your account. One account is for one person. ' +
+      'Caltal only emails you about your account: to confirm your address, and to reset your password ' +
+      'when you ask. These emails are sent through Resend, an email delivery service.',
   },
   {
     heading: 'Your tasks and your location',
