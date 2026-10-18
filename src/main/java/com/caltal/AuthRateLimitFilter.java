@@ -60,8 +60,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         response.setStatus(429);
         response.setHeader("Retry-After", String.valueOf(decision.retryAfterSeconds()));
         response.setContentType("text/plain;charset=UTF-8");
-        response.getWriter().write(
-                "Too many attempts. Try again in " + decision.retryAfterSeconds() + " seconds.");
+        response.getWriter().write(message(decision.retryAfterSeconds()));
+    }
+
+    // In words rather than an exact count of seconds, which reads oddly and is
+    // out of date by the time it's read. The exact figure is in Retry-After.
+    static String message(long retryAfterSeconds) {
+        String wait = retryAfterSeconds <= 60
+                ? "a minute"
+                : ((retryAfterSeconds + 59) / 60) + " minutes";
+        return "Too many attempts. Please wait " + wait + " and try again.";
     }
 
     // Behind Fly, every request arrives from Fly's proxy, so the socket address is

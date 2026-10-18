@@ -35,6 +35,12 @@ export async function clearTimeReminders() {
   );
 }
 
+// Whether the phone lets Caltal show notifications at all. Doesn't ask.
+export async function notificationsAllowed() {
+  const current = await Notifications.getPermissionsAsync();
+  return current.granted;
+}
+
 async function canNotify() {
   // Android 13+ won't show the permission prompt until the app has at least
   // one notification channel, so make ours first.
@@ -91,4 +97,30 @@ export async function scheduleTimeReminders(tasks) {
   }
 
   return upcoming.length;
+}
+
+// For Settings: a reminder a minute from now, sent exactly the way real ones
+// are, so it shows whether reminders reach this phone at all. Returns false if
+// the phone won't allow notifications.
+export async function sendTestReminder() {
+  if (!(await canNotify())) {
+    return false;
+  }
+
+  const channelId = await reminderChannel();
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: 'caltal-test',
+    content: {
+      title: 'Test reminder',
+      body: 'Time reminders are working on this phone.',
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(Date.now() + 60 * 1000),
+      ...(channelId ? { channelId } : {}),
+    },
+  });
+
+  return true;
 }

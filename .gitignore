@@ -19,3 +19,4 @@ output.txt
 
 # Local Claude Code settings
 .claude/
+trust-policy.json

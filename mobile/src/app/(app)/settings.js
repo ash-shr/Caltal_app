@@ -24,6 +24,7 @@ import {
   updateName,
 } from '../../api';
 import { usePlaceReminders } from '../../placeReminders';
+import { notificationsAllowed, sendTestReminder } from '../../timeReminders';
 import { clearAllReminders } from '../../reminders';
 import { useSession } from '../../session';
 import { RADIUS_MAX, RADIUS_MIN, useSettings } from '../../settings';
@@ -68,10 +69,15 @@ export default function Settings() {
   const [me, setMe] = useState(null);
   const [accountError, setAccountError] = useState('');
 
+  // Whether the phone lets Caltal show notifications. Null until known.
+  const [notificationsOn, setNotificationsOn] = useState(null);
+
   useEffect(() => {
     getMe()
       .then(setMe)
       .catch(() => setAccountError("Your account details couldn't be loaded right now."));
+
+    notificationsAllowed().then(setNotificationsOn).catch(() => {});
 
     // The confirmation link is opened in the browser. When the person comes
     // back to the app, look again, so "Not confirmed" doesn't linger.
@@ -82,10 +88,33 @@ export default function Settings() {
           .catch(() => {
             // Keep showing what was loaded before
           });
+        // They may have just switched notifications on in the phone's settings
+        notificationsAllowed().then(setNotificationsOn).catch(() => {});
       }
     });
     return () => subscription.remove();
   }, []);
+
+  // ---- Test reminder ----
+  const [testState, setTestState] = useState({ busy: false, message: '' });
+
+  const sendTest = async () => {
+    setTestState({ busy: true, message: '' });
+    try {
+      if (await sendTestReminder()) {
+        setTestState({
+          busy: false,
+          message:
+            'Sent. It should arrive in about a minute, even with your phone locked or Caltal closed.',
+        });
+      } else {
+        setNotificationsOn(false);
+        setTestState({ busy: false, message: '' });
+      }
+    } catch (failure) {
+      setTestState({ busy: false, message: failure.message });
+    }
+  };
 
   // ---- Email confirmation ----
   const [confirmState, setConfirmState] = useState({ busy: false, sent: false, message: '' });
@@ -299,6 +328,29 @@ export default function Settings() {
             value={settings.timeReminders}
             onChange={on => updateSettings({ timeReminders: on })}
           />
+          {settings.timeReminders && notificationsOn === false && (
+            <View style={styles.stack}>
+              <Text style={styles.warning}>
+                Notifications are turned off for Caltal on this phone, so no reminders can appear.
+              </Text>
+              <Button
+                title="Open phone settings"
+                variant="secondary"
+                onPress={() => Linking.openSettings()}
+              />
+            </View>
+          )}
+          {settings.timeReminders && notificationsOn !== false && (
+            <View style={styles.stack}>
+              <Button
+                title="Send a test reminder"
+                variant="secondary"
+                onPress={sendTest}
+                busy={testState.busy}
+              />
+              {testState.message !== '' && <Text style={styles.hint}>{testState.message}</Text>}
+            </View>
+          )}
 
           <View style={styles.divider} />
 

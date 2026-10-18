@@ -31,6 +31,8 @@ class AuthRateLimitFilterTest {
 
         assertEquals(429, blocked.getStatus());
         assertNotNull(blocked.getHeader("Retry-After"));
+        assertEquals("Too many attempts. Please wait a minute and try again.",
+                blocked.getContentAsString());
     }
 
     @Test
@@ -57,6 +59,12 @@ class AuthRateLimitFilterTest {
         send(filter, "POST", "/api/me/verify-email", "1.2.3.4");
 
         assertEquals(429, send(filter, "POST", "/api/me/verify-email/confirm", "1.2.3.4").getStatus());
+    }
+
+    @Test
+    void longerWaitsAreGivenInMinutes() {
+        assertEquals("Too many attempts. Please wait 3 minutes and try again.",
+                AuthRateLimitFilter.message(150));
     }
 
     @Test
