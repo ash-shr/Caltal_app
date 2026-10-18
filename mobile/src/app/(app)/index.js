@@ -38,6 +38,13 @@ const SNAP_FRACTIONS = [0.16, 0.5, 0.92];
 const SNAP_POINTS = SNAP_FRACTIONS.map(fraction => `${fraction * 100}%`);
 const HALF = 1;
 
+// Dragging the sheet only starts once a finger has moved 10 points up or down,
+// and a sideways move of 10 points rules it out. Without these, the sheet
+// grabbed every drag inside it, so the radius slider in the task form could
+// be tapped but not slid on Android.
+const SHEET_ACTIVE_Y = [-10, 10];
+const SHEET_FAIL_X = [-10, 10];
+
 // A blank task for the form, optionally already pinned somewhere. Whether it
 // has a time and whether it has a place are two separate switches; the
 // reminder type is worked out from them when it's saved.
@@ -85,10 +92,18 @@ export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { user, signOut } = useSession();
+  const { user, signOut, homeReady } = useSession();
   const { settings } = useSettings();
-  const { tasks, error, refresh, create, update, complete, remove } = useTasks();
+  const { tasks, loading, error, refresh, create, update, complete, remove } = useTasks();
   const { places } = usePlaces();
+
+  // The splash stays up after sign-in until the tasks are here, so the map
+  // doesn't appear empty and then fill in.
+  useEffect(() => {
+    if (!loading) {
+      homeReady();
+    }
+  }, [loading, homeReady]);
 
   const map = useRef(null);
   const sheet = useRef(null);
@@ -432,6 +447,8 @@ export default function Home() {
         snapPoints={SNAP_POINTS}
         enableDynamicSizing={false}
         onChange={index => setSheetIndex(index)}
+        activeOffsetY={SHEET_ACTIVE_Y}
+        failOffsetX={SHEET_FAIL_X}
         style={floating}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"

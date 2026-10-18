@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,13 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
-import Splash from '../components/Splash';
 import { login, register, requestPasswordReset } from '../api';
 import { useSession } from '../session';
 import { colours } from '../theme';
 
 export default function SignIn() {
-  const { setUser } = useSession();
+  const { signIn } = useSession();
 
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
@@ -54,19 +54,21 @@ export default function SignIn() {
 
   const submit = async () => {
     setError('');
-    setBusy(true);
+    // The splash covers the whole screen; the keyboard would sit on top of it
+    Keyboard.dismiss();
 
     try {
-      const result = signingUp
-        ? await register(email.trim(), password, name.trim())
-        : await login(email.trim(), password);
-
-      // Setting the user flips Stack.Protected in the root layout, which
-      // swaps this screen for the map on its own — no navigate() needed.
-      setUser({ name: result.name, email: result.email });
+      // signIn shows the peeling orange over everything while the server
+      // answers. Then setting the user flips Stack.Protected in the root
+      // layout, which swaps this screen for the map on its own (no navigate()
+      // needed), and the splash stays until the map has the tasks.
+      await signIn(() =>
+        signingUp
+          ? register(email.trim(), password, name.trim())
+          : login(email.trim(), password),
+      );
     } catch (failure) {
       setError(failure.message);
-      setBusy(false);
     }
   };
 
@@ -193,10 +195,6 @@ export default function SignIn() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* The same peeling orange as start-up, while the server answers. Not for
-          a reset link: that's quick, and the button shows it's working. */}
-      {busy && !forgot && <Splash />}
     </SafeAreaView>
   );
 }

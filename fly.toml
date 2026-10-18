@@ -16,7 +16,12 @@ primary_region = 'lhr'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  # When nobody is using it, the server is paused rather than switched off.
+  # Waking from a pause takes well under a second; starting from off meant
+  # Java and Spring Boot booting from scratch, so the first request after a
+  # quiet spell (a sign-in, say) took many seconds. Paused costs the same as
+  # off: storage only.
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
   processes = ['app']

@@ -32,7 +32,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { user, booting } = useSession();
+  const { user, booting, waiting } = useSession();
 
   // The animated splash below is on screen from the very first render.
   useEffect(() => {
@@ -59,7 +59,9 @@ function RootNavigator() {
         </Stack.Protected>
       </Stack>
 
-      {booting && <Splash />}
+      {/* Over everything, so it stays full screen while sign-in is swapped
+          for the map underneath it */}
+      {(booting || waiting) && <Splash />}
 
       <StatusBar style="dark" />
     </View>

@@ -22,7 +22,7 @@
       "package": "com.ashshr.caltal",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground.png",
-        "backgroundColor": "#fafaf9"
+        "backgroundColor": "#fb8a28"
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
