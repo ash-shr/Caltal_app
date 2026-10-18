@@ -28,6 +28,7 @@ export default function ProfileMenu({
   onSettings,
   onPlaces,
   onTerms,
+  onPrivacy,
   onSignOut,
 }) {
   const insets = useSafeAreaInsets();
@@ -54,6 +55,7 @@ export default function ProfileMenu({
           <Row icon="bookmark-outline" label="Saved places" onPress={onPlaces} />
           <Row icon="settings-outline" label="Settings" onPress={onSettings} />
           <Row icon="document-text-outline" label="Terms and conditions" onPress={onTerms} />
+          <Row icon="shield-checkmark-outline" label="Privacy policy" onPress={onPrivacy} />
 
           <View style={styles.divider} />
 

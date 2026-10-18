@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PRIVACY_URL } from '../../config';
 import { colours } from '../../theme';
 
 // Basic placeholder terms in plain English: the same words as the website's
@@ -75,6 +76,10 @@ export default function Terms() {
           <Text style={styles.body}>{section.body}</Text>
         </View>
       ))}
+
+      <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={8}>
+        <Text style={styles.link}>Read the privacy policy</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -85,4 +90,5 @@ const styles = StyleSheet.create({
   section: { gap: 6 },
   heading: { fontSize: 16, fontWeight: '600', color: colours.ink },
   body: { fontSize: 15, color: colours.body, lineHeight: 22 },
+  link: { fontSize: 15, color: colours.orange, fontWeight: '500' },
 });

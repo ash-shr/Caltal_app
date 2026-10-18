@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Auth from './Auth';
+import DeleteAccountPage from './DeleteAccountPage';
 import PlacesPage from './PlacesPage';
+import PrivacyPage from './PrivacyPage';
 import ResetPassword from './ResetPassword';
 import SettingsPage from './SettingsPage';
 import Splash from './Splash';
@@ -19,6 +21,14 @@ const Home = lazy(() => import('./Home'));
 // How long the splash stays up at minimum. Long enough to read as deliberate
 // rather than a flicker, short enough not to be in the way.
 const SPLASH_MS = 1400;
+
+// Pages anyone can read without signing in. Signed in, they open over the map
+// like the other pages.
+const PUBLIC_PAGES = {
+  '/terms': TermsPage,
+  '/privacy': PrivacyPage,
+  '/delete-account': DeleteAccountPage,
+};
 
 function App() {
   const [user, setUser] = useState(getStoredUser());
@@ -53,7 +63,8 @@ function App() {
   }
 
   if (!user) {
-    return <Auth onAuthenticated={setUser} />;
+    const PublicPage = PUBLIC_PAGES[path];
+    return PublicPage ? <PublicPage signedIn={false} /> : <Auth onAuthenticated={setUser} />;
   }
 
   return (
@@ -72,7 +83,7 @@ function App() {
 
 // Everything behind sign-in. Tasks and saved places are loaded once here and
 // shared by the map and the pages, so they always agree. The map stays
-// loaded under the pages (/settings, /places, /terms), which lie on top of it.
+// loaded under the pages (/settings, /places, /terms...), which lie on top of it.
 function SignedIn({ user, path, onUserChange, onSignOut, onAccountDeleted }) {
   const tasks = useTasks();
   const places = usePlaces();
@@ -100,7 +111,9 @@ function SignedIn({ user, path, onUserChange, onSignOut, onAccountDeleted }) {
         />
       )}
 
-      {path === '/terms' && <TermsPage />}
+      {path === '/terms' && <TermsPage signedIn />}
+      {path === '/privacy' && <PrivacyPage signedIn />}
+      {path === '/delete-account' && <DeleteAccountPage signedIn />}
     </Suspense>
   );
 }

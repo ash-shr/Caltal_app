@@ -3,6 +3,7 @@ import {
   Dimensions,
   Image,
   Keyboard,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -24,6 +25,7 @@ import SearchBar from '../../components/SearchBar';
 import TaskDetail from '../../components/TaskDetail';
 import TaskForm from '../../components/TaskForm';
 import TaskMap from '../../components/TaskMap';
+import { PRIVACY_URL } from '../../config';
 import { longDay, shortTime, today } from '../../dates';
 import { savedPlaceAt, usePlaces } from '../../places';
 import { useSession } from '../../session';
@@ -514,6 +516,11 @@ export default function Home() {
         onSettings={() => goTo('/settings')}
         onTerms={() => goTo('/terms')}
         onPlaces={() => goTo('/places')}
+        onPrivacy={() => {
+          // The policy lives on the website, so it opens in the browser
+          setMenuOpen(false);
+          Linking.openURL(PRIVACY_URL).catch(() => {});
+        }}
         onSignOut={confirmSignOut}
       />
 

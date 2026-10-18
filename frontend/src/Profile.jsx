@@ -113,6 +113,7 @@ function Profile({ user, onSignOut }) {
                     ['/places', 'Saved places'],
                     ['/settings', 'Settings'],
                     ['/terms', 'Terms'],
+                    ['/privacy', 'Privacy'],
                 ].map(([path, label]) => (
                     <button
                         key={path}

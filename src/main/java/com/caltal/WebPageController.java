@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class WebPageController {
 
-    @GetMapping({"/reset-password", "/verify-email", "/settings", "/places", "/terms"})
+    @GetMapping({
+            "/reset-password", "/verify-email",
+            "/settings", "/places", "/terms", "/privacy", "/delete-account"
+    })
     public String page() {
         return "forward:/index.html";
     }

@@ -2,10 +2,14 @@ import { useEffect } from 'react';
 import Icon from './icons';
 import { navigate } from './router';
 
-// A full page laid over the map (Settings, Saved places, Terms). The map
-// stays loaded underneath, so going back to it is instant and it's still
+// A full page laid over the map (Settings, Saved places, Terms, Privacy). The
+// map stays loaded underneath, so going back to it is instant and it's still
 // where it was left. Escape goes back too.
-function PageLayout({ title, children }) {
+//
+// The public pages (Terms, Privacy, Delete your account) can also be read
+// without signing in. There's no map behind them then, so the way back says
+// where it really goes.
+function PageLayout({ title, signedIn = true, children }) {
   useEffect(() => {
     const onKeyDown = event => {
       if (event.key === 'Escape' && !event.defaultPrevented) navigate('/');
@@ -23,7 +27,7 @@ function PageLayout({ title, children }) {
           className="-ml-1 mb-6 flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-stone-800"
         >
           <Icon name="back" size={16} />
-          Back to the map
+          {signedIn ? 'Back to the map' : 'Go to Caltal'}
         </button>
 
         <h1 className="mb-8 text-2xl font-semibold tracking-tight text-stone-800">{title}</h1>

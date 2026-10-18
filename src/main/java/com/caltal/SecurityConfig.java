@@ -49,7 +49,8 @@ public class SecurityConfig {
     // The website's own pages (WebPageController). Public, like the rest of the
     // React app: what's behind sign-in is the API they call, not the page.
     static final String[] PAGES = {
-            "/reset-password", "/verify-email", "/settings", "/places", "/terms"
+            "/reset-password", "/verify-email",
+            "/settings", "/places", "/terms", "/privacy", "/delete-account"
     };
 
     // Only the browser features Caltal actually uses: location for geofencing,

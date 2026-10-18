@@ -16,9 +16,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 // With the real security rules: someone opening a link from an email usually
-// isn't signed in on that browser, and must still get the page. The site's
-// other pages must load too, before sign-in has been checked (the React app
-// does that), or reloading them would fail.
+// isn't signed in on that browser, and must still get the page. The privacy
+// policy and delete-your-account page must be public (Google Play checks
+// them), and the site's other pages must load too, before sign-in has been
+// checked (the React app does that), or reloading them would fail.
 @WebMvcTest(WebPageController.class)
 @Import(SecurityConfig.class)
 class WebPageControllerTest {
@@ -34,7 +35,10 @@ class WebPageControllerTest {
     private UserRepository userRepository;
 
     @ParameterizedTest
-    @ValueSource(strings = { "/reset-password", "/verify-email", "/settings", "/places", "/terms" })
+    @ValueSource(strings = {
+            "/reset-password", "/verify-email",
+            "/settings", "/places", "/terms", "/privacy", "/delete-account"
+    })
     void theWebsitesPagesAllOpenTheReactApp(String page) throws Exception {
         mockMvc.perform(get(page))
                 .andExpect(status().isOk())

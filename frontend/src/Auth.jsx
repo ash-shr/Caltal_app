@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { login, register, loginWithGoogle, requestPasswordReset } from './api';
 import Splash from './Splash';
 import GoogleButton from './GoogleButton';
+import { navigate } from './router';
 import { buttonClass, inputClass, linkButtonClass } from './ui';
 
 // notice: a line shown above the form, saying why sign-in is needed here
@@ -218,6 +219,22 @@ function Auth({ onAuthenticated, notice }) {
           </p>
         )}
 
+        <p className="mt-10 flex justify-center gap-4 text-xs text-stone-400">
+          {[
+            ['/terms', 'Terms'],
+            ['/privacy', 'Privacy'],
+            ['/delete-account', 'Delete an account'],
+          ].map(([path, label]) => (
+            <button
+              key={path}
+              type="button"
+              onClick={() => navigate(path)}
+              className="transition-colors hover:text-stone-700"
+            >
+              {label}
+            </button>
+          ))}
+        </p>
       </div>
     </div>
   );

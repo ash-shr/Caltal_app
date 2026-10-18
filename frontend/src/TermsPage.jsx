@@ -1,4 +1,5 @@
 import PageLayout from './PageLayout';
+import { navigate } from './router';
 
 // Basic placeholder terms in plain English: the same words as the phone
 // app's Terms screen (mobile/src/app/(app)/terms.js), so change both together.
@@ -60,9 +61,9 @@ const SECTIONS = [
   },
 ];
 
-function TermsPage() {
+function TermsPage({ signedIn }) {
   return (
-    <PageLayout title="Terms">
+    <PageLayout title="Terms" signedIn={signedIn}>
       <p className="-mt-6 text-sm text-stone-400">Last updated {UPDATED}</p>
 
       {SECTIONS.map((section, index) => (
@@ -73,6 +74,14 @@ function TermsPage() {
           <p className="text-[15px] leading-relaxed text-stone-600">{section.body}</p>
         </section>
       ))}
+
+      <button
+        type="button"
+        onClick={() => navigate('/privacy')}
+        className="text-[15px] font-medium text-caltal hover:underline"
+      >
+        Read the privacy policy
+      </button>
     </PageLayout>
   );
 }

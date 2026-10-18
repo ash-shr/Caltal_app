@@ -27,3 +27,8 @@ export const MAP_COLOURS = {
 // and nearly full. The same stops as the phone app's sheet.
 export const SHEET_STOPS = [0.18, 0.5, 0.92];
 export const SHEET_HALF = 1;
+
+// Where people can reach whoever runs Caltal: shown on the privacy policy and
+// the delete-your-account page. Google Play needs a contact address too.
+// Empty until one is chosen, and the pages leave the line out until then.
+export const CONTACT_EMAIL = 'ash.shr.005@gmail.com';
