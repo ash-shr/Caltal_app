@@ -14,10 +14,10 @@ Distance is calculated with the Haversine formula — spherical rather than flat
 
 ## Tech stack
 
-- **Java 21**, **Spring Boot 3.5**
+- **Java 21**, **Spring Boot 4.1**
 - **Spring Data JPA** / Hibernate
 - **PostgreSQL 16** (H2 in tests)
-- **JUnit 5**, **Mockito**, **MockMvc**
+- **JUnit 6**, **Mockito**, **MockMvc**
 - **Maven**
 - **Docker** / Docker Compose
 - **GitHub Actions** CI, **SonarCloud** static analysis
