@@ -28,6 +28,7 @@ jobs:
           # The exact commit the tests ran on, not whatever main is by now
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      # The website's map key is a repository secret, handed to the build
+      - run: flyctl deploy --remote-only --build-arg VITE_MAP_KEY=${{ secrets.MAPTILER_KEY }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

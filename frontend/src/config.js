@@ -1,7 +1,10 @@
-// Restricted to caltal.app, caltal.fly.dev and localhost in the MapTiler
-// dashboard, so it being visible in the bundle is expected rather than a leak.
-// A new address for the website has to be added there too, or the map stays
-// blank on it.
+// The same MapTiler key as the phone app's. It comes from the deploy (the
+// MAPTILER_KEY secret on GitHub), or from frontend/.env.local for `npm run dev`,
+// so it isn't in the code. In the MapTiler dashboard it's restricted to
+// caltal.app, www.caltal.app, caltal.fly.dev and localhost, plus "?" for the
+// phone app, which sends no website address. Visible in the website's bundle,
+// as any map key is; the address list is what protects it. A new address for
+// the website has to be added there too, or the map stays blank on it.
 export const MAP_KEY = import.meta.env.VITE_MAP_KEY ?? '';
 
 // The same map style as the phone app (mobile/src/config.js)

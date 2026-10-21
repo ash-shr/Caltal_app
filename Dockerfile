@@ -7,6 +7,13 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend/ ./
+# The map key comes in from the deploy (the MAPTILER_KEY secret on GitHub,
+# see .github/workflows/fly-deploy.yml), so it isn't kept in the code. Vite
+# reads VITE_ variables from the environment as well as from .env files.
+# Without it the website's map would be blank, so the build stops instead.
+# A deploy by hand needs it too: fly deploy --build-arg VITE_MAP_KEY=...
+ARG VITE_MAP_KEY
+RUN test -n "$VITE_MAP_KEY" || (echo "VITE_MAP_KEY build argument is missing" && exit 1)
 RUN npm run build
 
 # --- Stage 2: build the Spring Boot jar --------------------------------------
