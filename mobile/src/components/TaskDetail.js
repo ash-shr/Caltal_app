@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Button from './Button';
+import VoiceNotePlayer from './VoiceNotePlayer';
 import { longDay, shortTime } from '../dates';
 import { hasPlace } from '../tasks';
 import { colours } from '../theme';
@@ -75,6 +76,13 @@ export default function TaskDetail({ task, onBack, onEdit, onComplete, onDelete,
         {task.complete && <Line icon="checkmark-circle-outline">Done</Line>}
       </View>
 
+      {task.voiceNoteMs != null && (
+        <View style={styles.voice}>
+          <Text style={styles.voiceLabel}>Voice note</Text>
+          <VoiceNotePlayer taskId={task.id} durationMs={task.voiceNoteMs} />
+        </View>
+      )}
+
       <View style={styles.actions}>
         {!task.complete && (
           <Button
@@ -108,6 +116,15 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   lineText: { fontSize: 15, color: colours.body, flexShrink: 1 },
   link: { color: colours.orange },
+  voice: {
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colours.border,
+    backgroundColor: colours.surface,
+    borderRadius: 12,
+    padding: 12,
+  },
+  voiceLabel: { fontSize: 13, color: colours.muted },
   actions: { gap: 8, marginTop: 4 },
   delete: { marginTop: -4 },
   error: { fontSize: 14, color: colours.danger },

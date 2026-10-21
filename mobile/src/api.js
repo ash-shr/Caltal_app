@@ -41,10 +41,14 @@ export function setSessionExpiredHandler(handler) {
 async function request(path, options = {}) {
   const token = await getToken();
 
+  // A form (a voice note upload) gets its Content-Type from fetch itself, with
+  // the boundary between its parts; everything else here is JSON.
+  const isForm = options.body instanceof FormData;
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -146,6 +150,34 @@ export function completeTask(id) {
 
 export function deleteTask(id) {
   return request(`/tasks/${id}`, { method: 'DELETE' });
+}
+
+// ---- Voice notes (one per task) ----
+
+// Sends a recording made on this phone. It replaces the task's note if it had
+// one. Answers with the task, whose voiceNoteMs is now the note's length.
+export function uploadVoiceNote(taskId, fileUri, durationMs) {
+  const body = new FormData();
+  // React Native's way of attaching a file: its address on the phone, plus a
+  // name and type for the upload
+  body.append('audio', { uri: fileUri, name: 'voice-note.m4a', type: 'audio/mp4' });
+  body.append('durationMs', String(Math.round(durationMs)));
+  return request(`/tasks/${taskId}/voice-note`, { method: 'PUT', body });
+}
+
+export function deleteVoiceNote(taskId) {
+  return request(`/tasks/${taskId}/voice-note`, { method: 'DELETE' });
+}
+
+// What the audio player needs to play a task's note straight from the server:
+// the address, and the sign-in token to show for it. `version` changes when
+// the note does, so a re-recorded note is never played from an old copy.
+export async function voiceNoteSource(taskId, version) {
+  const token = await getToken();
+  return {
+    uri: `${API_URL}/tasks/${taskId}/voice-note?v=${version}`,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  };
 }
 
 // ---- The signed-in account ----

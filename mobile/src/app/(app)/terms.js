@@ -6,7 +6,7 @@ import { colours } from '../../theme';
 // Terms page (frontend/src/TermsPage.jsx), so change both together. Before
 // Caltal goes on the App Store or Google Play, these need replacing with
 // properly written terms and a privacy policy.
-const UPDATED = '16 October 2026';
+const UPDATED = '21 October 2026';
 
 const SECTIONS = [
   {
@@ -27,8 +27,8 @@ const SECTIONS = [
   {
     heading: 'Your tasks and your location',
     body:
-      'Caltal stores the tasks you create, including their names, dates, times and any places you pin ' +
-      'on the map. Your phone or browser checks your location itself to know when you reach one of ' +
+      'Caltal stores the tasks you create, including their names, dates, times, any places you pin ' +
+      'on the map, and any voice notes you record on them. Your phone or browser checks your location itself to know when you reach one of ' +
       'those places. Your live location is not sent to or stored on Caltal’s server. The map and ' +
       'the place search come from MapTiler, which sees the part of the map you look at and what ' +
       'you search for.',
@@ -50,7 +50,7 @@ const SECTIONS = [
     heading: 'Deleting your account',
     body:
       'You can delete your account at any time in Settings. This permanently removes your account and ' +
-      'all of your tasks from Caltal’s server.',
+      'all of your tasks and voice notes from Caltal’s server.',
   },
   {
     heading: 'Changes to these terms',

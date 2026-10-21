@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from './icons';
+import VoiceNotePlayer from './VoiceNotePlayer';
 import { longDay, shortTime } from './dates';
 import { hasPlace } from './useTasks';
 import {
@@ -26,11 +27,13 @@ function Line({ icon, children }) {
 }
 
 // One task in full, shown in the panel in place of the calendar.
-function TaskDetail({ task, onBack, onEdit, onComplete, onDelete, onShowOnMap }) {
+function TaskDetail({ task, onBack, onEdit, onComplete, onDelete, onShowOnMap, onRemoveVoiceNote }) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   // Deleting can't be undone, so it takes a second click to confirm
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Removing the voice note can't be undone either
+  const [confirmingRemoveNote, setConfirmingRemoveNote] = useState(false);
 
   const run = async (which, action) => {
     setBusy(which);
@@ -85,6 +88,46 @@ function TaskDetail({ task, onBack, onEdit, onComplete, onDelete, onShowOnMap })
         )}
         {task.complete && <Line icon="check">Done</Line>}
       </div>
+
+      {task.voiceNoteMs != null && (
+        <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+          <p className="text-sm text-stone-500">Voice note</p>
+          <VoiceNotePlayer taskId={task.id} version={task.voiceNoteMs} />
+          {confirmingRemoveNote ? (
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-stone-600">Remove it for good?</span>
+              <button
+                type="button"
+                onClick={() =>
+                  run('voice', async () => {
+                    await onRemoveVoiceNote();
+                    setConfirmingRemoveNote(false);
+                  })
+                }
+                disabled={busy !== ''}
+                className="font-medium text-red-600 hover:text-red-700"
+              >
+                {busy === 'voice' ? 'Removing…' : 'Remove'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingRemoveNote(false)}
+                className="text-stone-500 hover:text-stone-800"
+              >
+                Keep it
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingRemoveNote(true)}
+              className="text-sm text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
+            >
+              Remove voice note
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <button type="button" onClick={onEdit} className={buttonClass}>

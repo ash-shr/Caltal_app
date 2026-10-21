@@ -183,6 +183,29 @@ export function updateTask(id, task) {
   });
 }
 
+// A task's voice note (recorded in the app) as a Blob the page can play. A
+// plain <audio src> can't send the sign-in token, so it's fetched here first.
+export async function getVoiceNote(taskId) {
+  const token = getToken();
+  const response = await fetch(`${BASE_URL}/tasks/${taskId}/voice-note`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (response.status === 401) {
+    clearSession();
+    window.location.reload();
+    throw new Error('Session expired');
+  }
+  if (!response.ok) {
+    throw new Error("Couldn't load the voice note");
+  }
+  return response.blob();
+}
+
+export function deleteVoiceNote(taskId) {
+  return request(`${BASE_URL}/tasks/${taskId}/voice-note`, { method: 'DELETE' });
+}
+
 export function getNearbyTasks(latitude, longitude) {
   return request(`${BASE_URL}/tasks/nearby?lat=${latitude}&lon=${longitude}`);
 }

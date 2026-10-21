@@ -14,6 +14,9 @@ function describe(task) {
   if (task.triggerLatitude != null) {
     parts.push('reminds you elsewhere');
   }
+  if (task.voiceNoteMs != null) {
+    parts.push('voice note');
+  }
   return parts.join(' · ');
 }
 

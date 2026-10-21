@@ -41,6 +41,10 @@ public class Task {
     private Double triggerLongitude;
     private Integer triggerRadius;
 
+    // How long the task's voice note is, or null if it has none. The recording
+    // itself is a VoiceNote, kept apart so loading tasks never loads audio.
+    private Integer voiceNoteMs;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     @JsonIgnore
@@ -329,5 +333,26 @@ public class Task {
 
     public void markComplete() {
         this.isComplete = true;
+    }
+
+    public Integer getVoiceNoteMs() {
+        return voiceNoteMs;
+    }
+
+    public boolean hasVoiceNote() {
+        return voiceNoteMs != null;
+    }
+
+    // Only VoiceNoteService calls these, alongside saving or deleting the
+    // recording itself, so the two always agree.
+    void attachVoiceNote(int durationMs) {
+        if (durationMs <= 0) {
+            throw new IllegalArgumentException("A voice note must have a length");
+        }
+        this.voiceNoteMs = durationMs;
+    }
+
+    void removeVoiceNote() {
+        this.voiceNoteMs = null;
     }
 }

@@ -91,5 +91,13 @@ export function useTasks() {
     [refresh],
   );
 
-  return { tasks, loading, error, refresh, create, update, complete, remove };
+  const removeVoiceNote = useCallback(
+    async id => {
+      await api.deleteVoiceNote(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { tasks, loading, error, refresh, create, update, complete, remove, removeVoiceNote };
 }

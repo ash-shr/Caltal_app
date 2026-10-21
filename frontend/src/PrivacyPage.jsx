@@ -6,7 +6,7 @@ import { navigate } from './router';
 // address, linked from the app and the store listing. Keep it true: if
 // Caltal starts collecting something new or using a new service, it goes here
 // first.
-const UPDATED = '18 October 2026';
+const UPDATED = '21 October 2026';
 
 // Word for word the notice the phone app shows before asking for background
 // location (mobile/src/placeReminders.js). Google wants the same words in the
@@ -66,10 +66,19 @@ function PrivacyPage({ signedIn }) {
             'Your password, as a scrambled one-way code (a BCrypt hash). Caltal never stores the password itself and cannot read it.',
             'If you sign in with Google: your Google account’s ID, name and email address, which Google shares with Caltal when you choose to sign in that way.',
             'Your tasks: their names, dates and reminder times, and for tasks with a place, the place on the map and the reminder distance.',
+            'Voice notes you record on a task in the phone app (up to two minutes each). The recording is stored with the task, only you can play it, and it is deleted when you remove it or delete the task.',
             'Your saved places (like Home or Work): their names, where they are, and the address if they came from a search.',
             'Records of the confirmation and password reset emails sent to you, kept only as long as needed to stop too many being sent.',
           ]}
         />
+      </section>
+
+      <section className="space-y-2">
+        <Heading>Your microphone</Heading>
+        <Paragraph>
+          The phone app uses the microphone only while you are recording a voice note, after you
+          tap to record and allow it. Nothing is recorded at any other time.
+        </Paragraph>
       </section>
 
       <section className="space-y-2">
@@ -97,7 +106,7 @@ function PrivacyPage({ signedIn }) {
         <Heading>Services Caltal relies on</Heading>
         <List
           items={[
-            'Fly.io hosts the website, the server and the database where your account, tasks and saved places are kept.',
+            'Fly.io hosts the website, the server and the database where your account, tasks, voice notes and saved places are kept.',
             'MapTiler provides the map and the place search. It receives the area of the map you look at and what you type into search.',
             'Resend sends Caltal’s emails, so it receives your email address and the email’s content.',
             'Google, only if you choose to sign in with Google.',
@@ -123,7 +132,8 @@ function PrivacyPage({ signedIn }) {
       <section className="space-y-2">
         <Heading>How long it’s kept</Heading>
         <Paragraph>
-          Your account, tasks and saved places are kept until you delete them or your account.
+          Your account, tasks, voice notes and saved places are kept until you delete them or your
+          account.
           Deleting your account removes all of it from Caltal’s database straight away. The
           database’s automatic backups are replaced over the following few days, after which
           nothing is left.

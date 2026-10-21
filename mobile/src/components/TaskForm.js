@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
+import AddRow from './AddRow';
 import Button from './Button';
 import DateTimeField from './DateTimeField';
+import VoiceNoteField from './VoiceNoteField';
 import { today } from '../dates';
 import { savedPlaceAt } from '../places';
 import { RADIUS_MAX, RADIUS_MIN } from '../settings';
@@ -31,21 +33,6 @@ function startingTime(date) {
   return hour > 23 ? '23:59' : `${String(hour).padStart(2, '0')}:00`;
 }
 
-// A dashed "+ Add a time" style button for a part of the task that's optional.
-function AddRow({ icon, label, hint, onPress }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
-      accessibilityRole="button"
-    >
-      <Ionicons name={icon} size={20} color={colours.orange} />
-      <Text style={styles.addLabel}>{label}</Text>
-      {hint && <Text style={styles.addHint}>{hint}</Text>}
-    </Pressable>
-  );
-}
-
 // The form for adding and editing a task. It doesn't keep the task's details
 // itself: HomeScreen owns them (the `draft`), because the map needs them too —
 // a tap on the map moves the draft's pin, and the radius slider here resizes
@@ -65,6 +52,7 @@ export default function TaskForm({
 }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   const editing = draft.taskId != null;
 
@@ -81,6 +69,10 @@ export default function TaskForm({
   const submit = async () => {
     setError('');
 
+    if (recording) {
+      setError('Stop the recording first.');
+      return;
+    }
     if (!draft.name.trim()) {
       setError('Give it a name.');
       return;
@@ -282,6 +274,13 @@ export default function TaskForm({
         </Text>
       )}
 
+      <VoiceNoteField
+        value={draft.voiceNote}
+        taskId={draft.taskId}
+        onChange={voiceNote => onChange({ voiceNote })}
+        onRecordingChange={setRecording}
+      />
+
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
       <Button title={editing ? 'Save changes' : 'Add task'} onPress={submit} busy={busy} />
@@ -304,20 +303,6 @@ const styles = StyleSheet.create({
     color: colours.ink,
   },
   label: { fontSize: 13, color: colours.muted },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colours.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    minHeight: 52,
-  },
-  pressed: { opacity: 0.7 },
-  addLabel: { fontSize: 15, color: colours.ink },
-  addHint: { fontSize: 13, color: colours.faint },
   removableRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   grow: { flex: 1 },
   removeLink: { alignSelf: 'flex-start' },

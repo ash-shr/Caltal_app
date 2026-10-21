@@ -48,4 +48,9 @@ public class InMemoryTaskRepository implements TaskRepository {
     public void deleteAllByOwner(User owner) {
         tasks.removeIf(task -> task.getOwner().equals(owner));
     }
+
+    @Override
+    public long countWithVoiceNotes(User owner) {
+        return findAllByOwner(owner).stream().filter(Task::hasVoiceNote).count();
+    }
 }

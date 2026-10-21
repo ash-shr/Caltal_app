@@ -75,7 +75,8 @@ function Home({ ref, user, tasks: taskList, places: placeList, onSignOut }) {
   const wide = useMediaQuery('(min-width: 768px)');
   const touch = useMediaQuery('(pointer: coarse)');
 
-  const { tasks, loading, error, refresh, create, update, complete, remove } = taskList;
+  const { tasks, loading, error, refresh, create, update, complete, remove, removeVoiceNote } =
+    taskList;
   const { places, save: savePlace } = placeList;
 
   const map = useRef(null);
@@ -517,6 +518,7 @@ function Home({ ref, user, tasks: taskList, places: placeList, onSignOut }) {
               backToCalendar();
             }}
             onShowOnMap={() => showOnMap(selectedTask.latitude, selectedTask.longitude)}
+            onRemoveVoiceNote={() => removeVoiceNote(selectedTask.id)}
           />
         )}
 

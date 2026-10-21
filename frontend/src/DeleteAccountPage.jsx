@@ -16,8 +16,8 @@ function DeleteAccountPage({ signedIn }) {
   return (
     <PageLayout title="Delete your Caltal account" signedIn={signedIn}>
       <p className="-mt-4 text-[15px] leading-relaxed text-stone-600">
-        Deleting your account removes it, with all of your tasks and saved places, from
-        Caltal’s server straight away. It can’t be undone. Uninstalling the app on its own
+        Deleting your account removes it, with all of your tasks, voice notes and saved places,
+        from Caltal’s server straight away. It can’t be undone. Uninstalling the app on its own
         doesn’t delete your account.
       </p>
 
@@ -42,8 +42,8 @@ function DeleteAccountPage({ signedIn }) {
       <section className="space-y-2">
         <h2 className="font-semibold text-stone-800">What’s deleted</h2>
         <p className="text-[15px] leading-relaxed text-stone-600">
-          Everything: your name, email address, password, tasks, saved places, and the records
-          of emails sent to you. Nothing is kept, apart from the database’s automatic backups,
+          Everything: your name, email address, password, tasks, voice notes, saved places, and
+          the records of emails sent to you. Nothing is kept, apart from the database’s automatic backups,
           which are replaced within a few days.
         </p>
       </section>

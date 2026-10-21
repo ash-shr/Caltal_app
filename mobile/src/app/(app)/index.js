@@ -60,6 +60,8 @@ function newDraft(date, radius, place) {
     longitude: place?.longitude ?? null,
     radius,
     trigger: null,
+    voiceNote: null,
+    hadVoiceNote: false,
   };
 }
 
@@ -82,7 +84,21 @@ function draftFromTask(task, defaultRadius) {
             radius: task.triggerRadius,
           }
         : null,
+    // The saved note, if there is one: no file on this phone (fileUri null),
+    // it plays from the server
+    voiceNote: task.voiceNoteMs != null ? { durationMs: task.voiceNoteMs, fileUri: null } : null,
+    hadVoiceNote: task.voiceNoteMs != null,
   };
+}
+
+// After the task itself is saved: upload a new recording, or delete the note
+// if it was removed. A saved note that wasn't touched stays as it is.
+async function applyVoiceNote(taskId, draft, { saveVoiceNote, removeVoiceNote }) {
+  if (draft.voiceNote?.fileUri) {
+    await saveVoiceNote(taskId, draft.voiceNote.fileUri, draft.voiceNote.durationMs);
+  } else if (draft.voiceNote == null && draft.hadVoiceNote) {
+    await removeVoiceNote(taskId);
+  }
 }
 
 // The home screen: the map fills the screen, and everything else sits on top
@@ -94,7 +110,18 @@ export default function Home() {
   const { height } = useWindowDimensions();
   const { user, signOut, homeReady } = useSession();
   const { settings } = useSettings();
-  const { tasks, loading, error, refresh, create, update, complete, remove } = useTasks();
+  const {
+    tasks,
+    loading,
+    error,
+    refresh,
+    create,
+    update,
+    complete,
+    remove,
+    saveVoiceNote,
+    removeVoiceNote,
+  } = useTasks();
   const { places } = usePlaces();
 
   // The splash stays up after sign-in until the tasks are here, so the map
@@ -226,13 +253,23 @@ export default function Home() {
   };
 
   const saveForm = async payload => {
-    if (draft.taskId != null) {
-      const saved = await update(draft.taskId, payload);
+    const editing = draft.taskId != null;
+    const saved = editing ? await update(draft.taskId, payload) : await create(payload);
+
+    try {
+      await applyVoiceNote(saved.id, draft, { saveVoiceNote, removeVoiceNote });
+    } catch (failure) {
+      // The task is saved even though its note isn't. The form stays open to
+      // try again, now editing that task, so a retry can't add a second one.
+      setDraft(current => ({ ...current, taskId: saved.id }));
+      throw new Error(`The task is saved, but its voice note isn't: ${failure.message}`);
+    }
+
+    if (editing) {
       setSelectedId(saved.id);
       setSelectedDate(saved.dueDate);
       setMode('task');
     } else {
-      const saved = await create(payload);
       setSelectedDate(saved.dueDate);
       setMode('calendar');
     }

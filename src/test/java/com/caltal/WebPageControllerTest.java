@@ -51,7 +51,9 @@ class WebPageControllerTest {
                 .andExpect(header().string("Content-Security-Policy",
                         containsString("connect-src 'self' https://accounts.google.com/gsi/ https://api.maptiler.com")))
                 .andExpect(header().string("Content-Security-Policy",
-                        containsString("worker-src 'self'")));
+                        containsString("worker-src 'self'")))
+                .andExpect(header().string("Content-Security-Policy",
+                        containsString("media-src 'self' blob:")));
     }
 
     @Test

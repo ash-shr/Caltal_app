@@ -113,9 +113,36 @@ export function TasksProvider({ children }) {
     [refresh],
   );
 
+  const saveVoiceNote = useCallback(
+    async (id, fileUri, durationMs) => {
+      await api.uploadVoiceNote(id, fileUri, durationMs);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const removeVoiceNote = useCallback(
+    async id => {
+      await api.deleteVoiceNote(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
   return (
     <TasksContext.Provider
-      value={{ tasks, loading, error, refresh, create, update, complete, remove }}
+      value={{
+        tasks,
+        loading,
+        error,
+        refresh,
+        create,
+        update,
+        complete,
+        remove,
+        saveVoiceNote,
+        removeVoiceNote,
+      }}
     >
       {children}
     </TasksContext.Provider>

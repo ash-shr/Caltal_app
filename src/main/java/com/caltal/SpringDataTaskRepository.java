@@ -14,6 +14,8 @@ public interface SpringDataTaskRepository extends JpaRepository<Task, Long> {
 
     Optional<Task> findByIdAndOwner(Long id, User owner);
 
+    long countByOwnerAndVoiceNoteMsIsNotNull(User owner);
+
     // One DELETE statement, rather than loading every task just to remove it.
     // @Modifying queries must run inside a transaction; AccountService provides it.
     @Modifying

@@ -40,4 +40,9 @@ public class JpaTaskRepository implements TaskRepository {
     public void deleteAllByOwner(User owner) {
         springDataRepository.deleteAllByOwner(owner);
     }
+
+    @Override
+    public long countWithVoiceNotes(User owner) {
+        return springDataRepository.countByOwnerAndVoiceNoteMsIsNotNull(owner);
+    }
 }

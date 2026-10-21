@@ -17,4 +17,7 @@ public interface TaskRepository {
 
     // Used when an account is deleted: its tasks go with it.
     void deleteAllByOwner(User owner);
+
+    // How many of this person's tasks have a voice note (for the per-account cap)
+    long countWithVoiceNotes(User owner);
 }

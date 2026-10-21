@@ -1,5 +1,7 @@
 package com.caltal;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,6 +34,9 @@ public class SecurityConfig {
     // api.maptiler.com serves the map (its style, tiles, fonts and icons, all
     // fetched by script) and the place search. The map library's background
     // worker is a file on this site, so 'self' covers it.
+    //
+    // Voice notes play from blob: addresses: the page fetches the recording
+    // with the sign-in token, then hands it to the browser's audio player.
     private static final String CONTENT_SECURITY_POLICY = String.join("; ",
             "default-src 'self'",
             "script-src 'self' https://accounts.google.com/gsi/client",
@@ -40,6 +45,7 @@ public class SecurityConfig {
             "img-src 'self' data: blob: https://api.maptiler.com",
             "connect-src 'self' https://accounts.google.com/gsi/ https://api.maptiler.com",
             "worker-src 'self'",
+            "media-src 'self' blob:",
             "font-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
@@ -83,6 +89,13 @@ public class SecurityConfig {
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // When a request fails before reaching a controller (an
+                        // upload over the size limit, a path that doesn't exist),
+                        // Spring forwards it to its error page. That second pass
+                        // isn't signed in, so without this every such error came
+                        // back as 401 instead of its real status, and the app
+                        // took a 401 to mean the session was over.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Signing out needs to know who is signing out, so it
                         // must come before the rule that opens up /api/auth/**.
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
