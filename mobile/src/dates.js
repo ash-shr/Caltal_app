@@ -25,6 +25,17 @@ export function longDay(text) {
   });
 }
 
+// 'Saturday 18 October', with the year added if it isn't this year's
+export function pastDay(text) {
+  const date = fromIsoDate(text);
+  return date.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(date.getFullYear() !== new Date().getFullYear() && { year: 'numeric' }),
+  });
+}
+
 // 'Fri 2 Oct'
 export function shortDay(text) {
   return fromIsoDate(text).toLocaleDateString('en-GB', {

@@ -35,6 +35,20 @@ export function circlePolygon(latitude, longitude, radiusMetres, properties = {}
   };
 }
 
+// The box around a circle, as the map wants it: [west, south, east, north].
+// Close enough for framing the map; a degree of longitude shrinks towards the
+// poles, hence the cos.
+export function circleBounds(latitude, longitude, radiusMetres) {
+  const latitudeSpan = (radiusMetres / EARTH_RADIUS_METRES) * (180 / Math.PI);
+  const longitudeSpan = latitudeSpan / Math.cos((latitude * Math.PI) / 180);
+  return [
+    longitude - longitudeSpan,
+    latitude - latitudeSpan,
+    longitude + longitudeSpan,
+    latitude + latitudeSpan,
+  ];
+}
+
 export function point(latitude, longitude, properties = {}) {
   return {
     type: 'Feature',

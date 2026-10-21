@@ -1,63 +1,83 @@
 import PageLayout from './PageLayout';
+import { CONTACT_EMAIL } from './config';
 import { navigate } from './router';
 
-// Basic placeholder terms in plain English: the same words as the phone
-// app's Terms screen (mobile/src/app/(app)/terms.js), so change both together.
-// Before Caltal goes on the App Store or Google Play, these need replacing
-// with properly written terms and a privacy policy.
+// The terms of use: the same words as the phone app's Terms screen
+// (mobile/src/app/(app)/terms.js), so change both together, and the date with
+// them. Written in plain English, but not reviewed by a lawyer.
 const UPDATED = '21 October 2026';
 
 const SECTIONS = [
   {
     heading: 'About Caltal',
     body:
-      'Caltal is a personal project that reminds you about tasks at a time, at a place, or both. ' +
-      'It is still being built, and it is provided as it is, without any guarantee that it will ' +
-      'always work or always be available.',
+      'Caltal is a task app that reminds you about tasks at a time, at a place, or both. It is ' +
+      'available as a website (caltal.fly.dev) and a phone app, and is provided by Ashutosh Sharma, ' +
+      'a developer based in the United Kingdom (“we”, “us”). By creating an account or using Caltal, ' +
+      'you agree to these terms.',
   },
   {
     heading: 'Your account',
     body:
-      'You need an account to use Caltal. Please give a real email address and keep your password ' +
-      'to yourself. You are responsible for what happens on your account. One account is for one person. ' +
-      'Caltal only emails you about your account: to confirm your address, and to reset your password ' +
-      'when you ask. These emails are sent through Resend, an email delivery service.',
+      'You need an account to use Caltal. You must give accurate details, including a valid email ' +
+      'address, and keep your password confidential. You are responsible for activity on your account. ' +
+      'Each account is for one person and must not be shared. We email you only about your account: to ' +
+      'confirm your email address and, when you ask, to reset your password.',
   },
   {
-    heading: 'Your tasks and your location',
+    heading: 'Your content and privacy',
     body:
-      'Caltal stores the tasks you create, including their names, dates, times, any places you pin ' +
-      'on the map, and any voice notes you record on them. Your phone or browser checks your location itself to know when you reach one of ' +
-      'those places. Your live location is not sent to or stored on Caltal’s server. The map and ' +
-      'the place search come from MapTiler, which sees the part of the map you look at and what ' +
-      'you search for.',
+      'The tasks, places and voice notes you add to Caltal remain yours. You allow us to store and ' +
+      'process them only so that we can provide Caltal to you. Our privacy policy explains what data ' +
+      'we collect, including how your location is used, and the rights you have over it.',
   },
   {
     heading: 'Reminders are not guaranteed',
     body:
-      'Phones limit what apps can do in the background, and the website can only remind you while it ' +
-      'is open, so a reminder can arrive late or not at all: for example with low battery, no signal, ' +
-      'or location turned off. Please don’t rely on Caltal for anything urgent, medical or safety-related.',
+      'Phones limit what apps can do in the background, and the website can remind you only while it ' +
+      'is open, so a reminder may arrive late or not at all: for example when your battery is low, you ' +
+      'have no signal, or location services are off. Do not rely on Caltal for anything urgent, medical ' +
+      'or safety-critical.',
   },
   {
-    heading: 'Using Caltal fairly',
+    heading: 'Acceptable use',
     body:
-      'Don’t use Caltal to break the law, to harm anyone, or to try to get into accounts or data ' +
-      'that aren’t yours. Accounts used this way may be removed.',
+      'You must not use Caltal to break the law, to harm others, to interfere with the service, or to ' +
+      'try to access accounts or data that are not yours. We may suspend or close accounts used in ' +
+      'this way.',
+  },
+  {
+    heading: 'Availability and liability',
+    body:
+      'Caltal is provided “as is” and “as available”. We work to keep it reliable and secure, but we ' +
+      'do not guarantee that it will always be available or free from errors, and we may change or ' +
+      'withdraw features. As far as the law allows, we are not responsible for any loss caused by a ' +
+      'missed or late reminder or by Caltal being unavailable. Nothing in these terms affects your ' +
+      'statutory rights.',
   },
   {
     heading: 'Deleting your account',
     body:
       'You can delete your account at any time in Settings. This permanently removes your account and ' +
-      'all of your tasks and voice notes from Caltal’s server.',
+      'all of your tasks, saved places and voice notes from our servers.',
   },
   {
     heading: 'Changes to these terms',
-    body: 'These terms may change as Caltal grows. The date at the top shows when they last changed.',
+    body:
+      'We may update these terms from time to time. The date at the top shows when they last changed. ' +
+      'If we make a significant change, we will let you know in Caltal before it takes effect.',
   },
   {
-    heading: 'Questions',
-    body: 'Caltal’s code is open at github.com/ash-shr/Caltal_app, where you can raise an issue.',
+    heading: 'Governing law',
+    body:
+      'These terms are governed by the law of England and Wales. If you live in Scotland or Northern ' +
+      'Ireland, you may also bring proceedings in your local courts.',
+  },
+  {
+    heading: 'Contact',
+    body:
+      `Questions about these terms can be sent to ${CONTACT_EMAIL}. Caltal’s source code is ` +
+      'public at github.com/ash-shr/Caltal_app.',
   },
 ];
 

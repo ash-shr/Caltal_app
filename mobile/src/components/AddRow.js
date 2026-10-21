@@ -1,12 +1,16 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colours } from '../theme';
 
 // A dashed "+ Add a time" style button for a part of a task that's optional.
+// None of them need typing, so pressing one puts the keyboard away.
 export default function AddRow({ icon, label, hint, onPress }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
       style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
       accessibilityRole="button"
     >

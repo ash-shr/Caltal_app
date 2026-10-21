@@ -9,7 +9,7 @@ import {
   NativeUserLocation,
 } from '@maplibre/maplibre-react-native';
 import { DEFAULT_CENTRE, MAP_STYLE } from '../config';
-import { circlePolygon, collection, point } from '../geo';
+import { circleBounds, circlePolygon, collection, point } from '../geo';
 import { hasPlace } from '../tasks';
 import { colours } from '../theme';
 
@@ -24,15 +24,14 @@ import { colours } from '../theme';
 //   selectedId  the task being looked at, drawn dark with its radius
 //   draft       the task being added or edited; its pin and circle are drawn
 //               when it has a place (placeOn) that's been put somewhere
-//   searched    { latitude, longitude } of the last search result
 //   places      the person's saved places (Home, Work…), drawn as white dots
 //   showUser    location permission granted, so the blue dot can be shown
+//   onUserMove  the person has started dragging or zooming the map
 const TaskMap = forwardRef(function TaskMap(
   {
     tasks,
     selectedId,
     draft,
-    searched,
     places = [],
     showUser,
     attributionTop = 120,
@@ -40,6 +39,7 @@ const TaskMap = forwardRef(function TaskMap(
     onLongPress,
     onPinPress,
     onPlacePress,
+    onUserMove,
   },
   ref,
 ) {
@@ -55,6 +55,19 @@ const TaskMap = forwardRef(function TaskMap(
         zoom,
         duration: 900,
         padding: { top: 0, right: 0, bottom: bottomInset, left: 0 },
+      });
+    },
+    // Frames a reminder circle in the part of the map that can be seen:
+    // `top` and `bottom` are how much of the screen the search bar and the
+    // sheet cover. A small circle still gets a street or two around it, so
+    // the map doesn't zoom in so far that there's nothing to recognise.
+    // easing 'fly' swoops (for a new place), 'ease' just slides and zooms
+    // (for a new radius).
+    fitCircle(latitude, longitude, radius, { top = 0, bottom = 0, easing = 'fly' } = {}) {
+      camera.current?.fitBounds(circleBounds(latitude, longitude, Math.max(radius, 120)), {
+        padding: { top: top + 24, right: 32, bottom: bottom + 24, left: 32 },
+        duration: easing === 'fly' ? 800 : 350,
+        easing,
       });
     },
     async centre() {
@@ -121,16 +134,15 @@ const TaskMap = forwardRef(function TaskMap(
     [places],
   );
 
-  const markers = useMemo(() => {
-    const features = [];
-    if (draft?.placeOn && draft.latitude != null) {
-      features.push(point(draft.latitude, draft.longitude, { kind: 'draft' }));
-    }
-    if (searched) {
-      features.push(point(searched.latitude, searched.longitude, { kind: 'search' }));
-    }
-    return collection(features);
-  }, [draft, searched]);
+  const markers = useMemo(
+    () =>
+      collection(
+        draft?.placeOn && draft.latitude != null
+          ? [point(draft.latitude, draft.longitude, { kind: 'draft' })]
+          : [],
+      ),
+    [draft],
+  );
 
   return (
     <MapView
@@ -144,6 +156,12 @@ const TaskMap = forwardRef(function TaskMap(
       compass={false}
       onPress={event => onPress?.(toLatLon(event.nativeEvent.lngLat))}
       onLongPress={event => onLongPress?.(toLatLon(event.nativeEvent.lngLat))}
+      onRegionWillChange={event => {
+        // Only the person's own drags and pinches, not the map moving itself
+        if (event.nativeEvent.userInteraction) {
+          onUserMove?.();
+        }
+      }}
     >
       <Camera
         ref={camera}
@@ -264,13 +282,7 @@ const TaskMap = forwardRef(function TaskMap(
           type="circle"
           paint={{
             'circle-radius': 9,
-            'circle-color': [
-              'match',
-              ['get', 'kind'],
-              'draft',
-              colours.ink,
-              colours.teal,
-            ],
+            'circle-color': colours.ink,
             'circle-stroke-width': 3,
             'circle-stroke-color': '#ffffff',
           }}

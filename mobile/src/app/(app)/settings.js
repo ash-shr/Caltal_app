@@ -229,7 +229,11 @@ export default function Settings() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <Section title="Account">
           <Text style={styles.rowLabel}>Name</Text>
           <Field value={name} onChangeText={setName} maxLength={100} textContentType="name" />

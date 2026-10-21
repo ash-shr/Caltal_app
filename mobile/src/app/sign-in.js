@@ -81,6 +81,7 @@ export default function SignIn() {
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Image
             source={require('../../assets/logo.png')}

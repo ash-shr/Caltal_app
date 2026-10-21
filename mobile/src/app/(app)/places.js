@@ -110,7 +110,11 @@ export default function SavedPlaces() {
   const { places, error, refresh } = usePlaces();
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
       {error !== '' ? (
         <Pressable onPress={refresh}>
           <Text style={styles.error}>{`Couldn't load your places: ${error} Tap to try again.`}</Text>

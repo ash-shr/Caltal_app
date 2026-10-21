@@ -42,6 +42,10 @@ const SNAP_FRACTIONS = [0.16, 0.5, 0.92];
 const SNAP_POINTS = SNAP_FRACTIONS.map(fraction => `${fraction * 100}%`);
 const HALF = 1;
 
+// How far the logo and search bar reach down from the top of the safe area,
+// with a little room under them. The map keeps circles clear of it.
+const TOP_BAR = 66;
+
 // Dragging the sheet only starts once a finger has moved 10 points up or down,
 // and a sideways move of 10 points rules it out. Without these, the sheet
 // grabbed every drag inside it, so the radius slider in the task form could
@@ -52,6 +56,8 @@ const SHEET_FAIL_X = [-10, 10];
 // A blank task for the form, optionally already pinned somewhere. Whether it
 // has a time and whether it has a place are two separate switches; the
 // reminder type is worked out from them when it's saved.
+//   placeName  what the pinned spot is called, when it came from a search
+//              (a saved place's name is looked up from the place itself)
 function newDraft(date, radius, place) {
   return {
     taskId: null,
@@ -62,6 +68,7 @@ function newDraft(date, radius, place) {
     placeOn: place != null,
     latitude: place?.latitude ?? null,
     longitude: place?.longitude ?? null,
+    placeName: place?.name ?? null,
     radius,
     trigger: null,
     voiceNote: null,
@@ -79,6 +86,7 @@ function draftFromTask(task, defaultRadius) {
     placeOn: hasPlace(task),
     latitude: task.latitude,
     longitude: task.longitude,
+    placeName: null,
     radius: task.radius ?? defaultRadius,
     trigger:
       task.triggerLatitude != null
@@ -144,7 +152,6 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [searched, setSearched] = useState(null);
   // The spot being saved as a place, while the "Save this place" box is open
   const [savingSpot, setSavingSpot] = useState(null);
   const [placeBannerHidden, setPlaceBannerHidden] = useState(false);
@@ -215,6 +222,22 @@ export default function Home() {
     [sheetIndex, height],
   );
 
+  // Show a reminder circle whole, in the space between the search bar and the
+  // sheet. The sheet comes to half height if it isn't already, so the map
+  // above it and the form (or task) in it can both be seen.
+  //   sheetAt  the sheet position to fit above; HALF unless the sheet is to
+  //            stay where it is
+  const showCircle = (latitude, longitude, radius, { easing = 'fly', sheetAt = HALF } = {}) => {
+    if (sheetAt === HALF && sheetIndex !== HALF) {
+      sheet.current?.snapToIndex(HALF);
+    }
+    map.current?.fitCircle(latitude, longitude, radius, {
+      top: insets.top + TOP_BAR,
+      bottom: height * SNAP_FRACTIONS[sheetAt],
+      easing,
+    });
+  };
+
   // ---- Moving between calendar, task and form ----
 
   // play: start its voice note straight away (from a ringing reminder)
@@ -225,7 +248,7 @@ export default function Home() {
     setSelectedDate(task.dueDate);
     setMode('task');
     if (hasPlace(task)) {
-      showOnMap(task.latitude, task.longitude);
+      showCircle(task.latitude, task.longitude, task.radius ?? settings.defaultRadius);
     } else if (sheetIndex < HALF) {
       sheet.current?.snapToIndex(HALF);
     }
@@ -268,12 +291,19 @@ export default function Home() {
     setDraft(null);
   };
 
+  // place: where the task goes, or null to choose later. With a place, the
+  // form opens straight away with its circle on the map and the distance
+  // slider showing, ready for a name.
   const startNewTask = place => {
+    Keyboard.dismiss();
     setDraft(newDraft(selectedDate, settings.defaultRadius, place));
     setSelectedId(null);
-    setSearched(null);
     setMode('form');
-    sheet.current?.snapToIndex(HALF);
+    if (place) {
+      showCircle(place.latitude, place.longitude, settings.defaultRadius);
+    } else {
+      sheet.current?.snapToIndex(HALF);
+    }
   };
 
   const startEditing = task => {
@@ -322,10 +352,34 @@ export default function Home() {
   // Gives the task being edited a place at this spot, switching its place
   // part on if it was off.
   const pinDraftAt = place =>
-    changeDraft({ placeOn: true, latitude: place.latitude, longitude: place.longitude });
+    changeDraft({
+      placeOn: true,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      placeName: place.name ?? null,
+    });
+
+  // A place chosen while the form is open: pin the task there and bring the
+  // circle into view, at the distance already set.
+  const moveDraftTo = place => {
+    Keyboard.dismiss();
+    pinDraftAt(place);
+    showCircle(place.latitude, place.longitude, draft.radius);
+  };
+
+  // After the distance slider is let go: zoom so the new circle fits. Only
+  // when the map can be seen, not with the sheet pulled up to full screen.
+  const fitNewRadius = radius => {
+    if (draft?.placeOn && draft.latitude != null && sheetIndex <= HALF) {
+      showCircle(draft.latitude, draft.longitude, radius, { easing: 'ease', sheetAt: sheetIndex });
+    }
+  };
 
   // ---- The map ----
 
+  // A tap (or press and hold) on the map. Outside the form it starts a new
+  // task right there; in the form it moves the task's pin (adding a place if
+  // it had none), without moving the map out from under the finger.
   const pressMap = place => {
     // With the keyboard up, a tap on the map is usually just "put the keyboard
     // away", so that's all the first tap does.
@@ -333,19 +387,9 @@ export default function Home() {
       Keyboard.dismiss();
       return;
     }
-    // While the form is open, a tap on the map gives the task a place there
-    // (adding one if it had none). Otherwise a tap on empty map lets go of the
-    // last search result.
     if (mode === 'form') {
       pinDraftAt(place);
     } else {
-      setSearched(null);
-    }
-  };
-
-  // Press and hold anywhere to start a task right there.
-  const holdMap = place => {
-    if (mode !== 'form') {
       startNewTask(place);
     }
   };
@@ -365,26 +409,35 @@ export default function Home() {
     // If a saved place is there too (often hidden under the task's pin),
     // use its exact spot so the form knows it's that place.
     if (hasPlace(task)) {
-      pinDraftAt(savedPlaceAt(places, task.latitude, task.longitude) ?? task);
+      pinDraftAt(
+        savedPlaceAt(places, task.latitude, task.longitude) ?? {
+          latitude: task.latitude,
+          longitude: task.longitude,
+        },
+      );
       return true;
     }
     return false;
   };
 
+  // A search result or a saved place: a new task there, or, with the form
+  // already open, the task's place moved there.
+  const choosePlace = place => {
+    if (mode === 'form') {
+      moveDraftTo(place);
+    } else {
+      startNewTask(place);
+    }
+  };
+
   // A saved place's dot on the map: in the form it moves the pin there,
-  // otherwise it's picked just like a search result.
+  // otherwise it starts a task there, just like a search result.
   const pressPlace = id => {
     const place = places.find(candidate => candidate.id === id);
     if (!place) {
       return false;
     }
-    Keyboard.dismiss();
-    if (mode === 'form') {
-      pinDraftAt(place);
-    } else {
-      setSearched(place);
-    }
-    showOnMap(place.latitude, place.longitude, 16);
+    choosePlace(place);
     return true;
   };
 
@@ -398,24 +451,6 @@ export default function Home() {
     }
   }, []);
 
-  const choosePlace = place => {
-    if (mode === 'form') {
-      pinDraftAt(place);
-    } else {
-      setSearched(place);
-    }
-    showOnMap(place.latitude, place.longitude, 16);
-  };
-
-  // A chip in the task form: pin the task at that saved place
-  const pickPlaceForTask = place => {
-    pinDraftAt(place);
-    showOnMap(place.latitude, place.longitude, 16);
-  };
-
-  // Offered for a search result that isn't saved yet
-  const searchedIsSaved =
-    searched !== null && savedPlaceAt(places, searched.latitude, searched.longitude) !== null;
 
   // ---- Profile menu ----
 
@@ -436,14 +471,14 @@ export default function Home() {
         tasks={tasks}
         selectedId={mode === 'task' ? selectedId : null}
         draft={mode === 'form' ? draft : null}
-        searched={searched}
         showUser={canShowLocation}
         attributionTop={insets.top + 124}
         onPress={pressMap}
-        onLongPress={holdMap}
+        onLongPress={pressMap}
         onPinPress={pressPin}
         places={places}
         onPlacePress={pressPlace}
+        onUserMove={Keyboard.dismiss}
       />
 
       {/* box-none: this row's own empty space lets touches through to the map */}
@@ -465,7 +500,6 @@ export default function Home() {
                 sheet.current?.snapToIndex(0);
               }
             }}
-            onClear={() => setSearched(null)}
           />
 
           <Pressable
@@ -478,30 +512,6 @@ export default function Home() {
         </View>
 
         <View style={styles.secondRow} pointerEvents="box-none">
-          {searched && mode !== 'form' ? (
-            <View style={styles.chipRow} pointerEvents="box-none">
-              <Pressable
-                onPress={() => startNewTask(searched)}
-                style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-              >
-                <Ionicons name="add" size={18} color="#ffffff" />
-                <Text style={styles.chipText}>Add a task here</Text>
-              </Pressable>
-
-              {!searchedIsSaved && (
-                <Pressable
-                  onPress={() => setSavingSpot(searched)}
-                  style={({ pressed }) => [styles.lightChip, pressed && styles.pressed]}
-                >
-                  <Ionicons name="bookmark-outline" size={16} color={colours.ink} />
-                  <Text style={styles.lightChipText}>Save place</Text>
-                </Pressable>
-              )}
-            </View>
-          ) : (
-            <View />
-          )}
-
           {canShowLocation && (
             <Pressable
               onPress={() =>
@@ -533,9 +543,13 @@ export default function Home() {
         backgroundStyle={styles.sheet}
         handleIndicatorStyle={styles.handle}
       >
+        {/* The keyboard goes away when the sheet's contents are scrolled, or
+            when a blank part of it is tapped (keyboardShouldPersistTaps
+            "handled" leaves taps on buttons to the buttons themselves) */}
         <BottomSheetScrollView
           contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {mode === 'calendar' && (
             <>
@@ -584,7 +598,13 @@ export default function Home() {
                 await remove(selectedTask.id);
                 backToCalendar();
               }}
-              onShowOnMap={() => showOnMap(selectedTask.latitude, selectedTask.longitude)}
+              onShowOnMap={() =>
+                showCircle(
+                  selectedTask.latitude,
+                  selectedTask.longitude,
+                  selectedTask.radius ?? settings.defaultRadius,
+                )
+              }
             />
           )}
 
@@ -596,9 +616,14 @@ export default function Home() {
               onCancel={cancelForm}
               placeRemindersOn={settings.placeReminders}
               places={places}
-              onPickPlace={pickPlaceForTask}
+              onPickPlace={moveDraftTo}
+              onRadiusSet={fitNewRadius}
               onSavePlace={() =>
-                setSavingSpot({ latitude: draft.latitude, longitude: draft.longitude })
+                setSavingSpot({
+                  latitude: draft.latitude,
+                  longitude: draft.longitude,
+                  name: draft.placeName ?? undefined,
+                })
               }
             />
           )}
@@ -621,16 +646,7 @@ export default function Home() {
       />
 
       {savingSpot && (
-        <SavePlaceModal
-          spot={savingSpot}
-          onClose={() => setSavingSpot(null)}
-          onSaved={saved => {
-            // If it was the searched spot, it's a saved place now
-            if (searched && savedPlaceAt([saved], searched.latitude, searched.longitude)) {
-              setSearched(saved);
-            }
-          }}
-        />
+        <SavePlaceModal spot={savingSpot} onClose={() => setSavingSpot(null)} />
       )}
     </View>
   );
@@ -642,36 +658,8 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   logo: { width: 48, height: 48 },
   avatarButton: { borderRadius: 24, ...floating },
-  secondRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingLeft: 58,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colours.ink,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    ...floating,
-  },
-  chipText: { color: '#ffffff', fontSize: 14, fontWeight: '500' },
-  chipRow: { flexDirection: 'row', gap: 8 },
-  lightChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colours.surface,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    ...floating,
-  },
-  lightChipText: { color: colours.ink, fontSize: 14, fontWeight: '500' },
-  pressed: { opacity: 0.85 },
+  // The "show where I am" button, on the right under the profile button
+  secondRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   roundButton: {
     width: 44,
     height: 44,

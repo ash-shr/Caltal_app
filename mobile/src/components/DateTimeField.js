@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { fromIsoDate, isoDate, shortDay } from '../dates';
 import { colours } from '../theme';
@@ -31,8 +31,9 @@ export default function DateTimeField({ label, mode, value, onChange }) {
   const current = toDate(mode, value);
   const choose = (_event, picked) => onChange(fromDate(mode, picked));
 
+  // Touching a picker puts the keyboard away: it isn't needed to pick a date
   return (
-    <View style={styles.row}>
+    <View style={styles.row} onTouchStart={Keyboard.dismiss}>
       <Text style={styles.label}>{label}</Text>
 
       {Platform.OS === 'ios' ? (

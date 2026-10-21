@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { today } from './dates';
+import { pastDay, today } from './dates';
 import { reminderChannel } from './notificationChannel';
 import { canRing, ringNow } from './ringing';
 import { readStoredSettings } from './settings';
@@ -17,9 +17,10 @@ export const GEOFENCE_TASK = 'caltal-geofence';
 export const MAX_REGIONS = 18;
 
 // What's currently registered with the phone: a fingerprint of the regions,
-// and for each region its task's name and whether it has a voice note (for
-// the notification, or the ringing screen). Saved on the phone because the
-// background task can run with the rest of the app not loaded at all.
+// and for each region its task's name, its day, and whether it has a voice
+// note (for the notification, or the ringing screen). Saved on the phone
+// because the background task can run with the rest of the app not loaded at
+// all.
 const WATCHED_KEY = 'caltal_watched_places';
 
 async function readWatched() {
@@ -46,7 +47,7 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
 
   const watched = await readWatched();
   const title = watched?.names?.[region.identifier] ?? 'A task is nearby';
-  const body = 'You are near somewhere you have something to do.';
+  const body = arrivalMessage(watched?.dueDates?.[region.identifier]);
 
   // Set to ring like an alarm (Android): the ringing screen instead
   const settings = await readStoredSettings();
@@ -76,6 +77,17 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
     trigger: channelId ? { channelId } : null,
   });
 });
+
+// What an arrival says. An unfinished task from a day that has passed still
+// reminds you when you get there, but says it's an older one and which day it
+// was for, so it isn't mistaken for something new.
+export function arrivalMessage(dueDate, todayText = today()) {
+  if (dueDate && dueDate < todayText) {
+    // The older day first, so it shows even when the phone cuts the text short
+    return `Older task, from ${pastDay(dueDate)}. You're near where it needs doing.`;
+  }
+  return 'You are near somewhere you have something to do.';
+}
 
 // Hand the OS the list of circles to watch, replacing any registered before.
 export async function watchPlaces(tasks) {
@@ -121,9 +133,9 @@ export async function watchPlaces(tasks) {
   // Registering a region makes the phone check straight away whether you're
   // already inside it — and say "arrived" if you are. So re-register only
   // when the regions actually changed, or opening the app at home would
-  // remind you about your home task every single time. The names and voice
-  // notes are saved every time, though: they can change without the regions
-  // changing.
+  // remind you about your home task every single time. The names, voice
+  // notes and days are saved every time, though: they can change without the
+  // regions changing.
   const fingerprint = JSON.stringify(regions);
   const watched = await readWatched();
   const running = await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK);
@@ -132,7 +144,11 @@ export async function watchPlaces(tasks) {
   const voiceNotes = Object.fromEntries(
     chosen.map(task => [`task-${task.id}`, task.voiceNoteMs != null]),
   );
-  await AsyncStorage.setItem(WATCHED_KEY, JSON.stringify({ fingerprint, names, voiceNotes }));
+  const dueDates = Object.fromEntries(chosen.map(task => [`task-${task.id}`, task.dueDate]));
+  await AsyncStorage.setItem(
+    WATCHED_KEY,
+    JSON.stringify({ fingerprint, names, voiceNotes, dueDates }),
+  );
 
   if (running && watched?.fingerprint === fingerprint) {
     return regions.length;

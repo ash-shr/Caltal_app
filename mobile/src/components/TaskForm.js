@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,13 +33,32 @@ function startingTime(date) {
   return hour > 23 ? '23:59' : `${String(hour).padStart(2, '0')}:00`;
 }
 
+// What the box at the top of the place part says about where the pin is
+function placeStatus(draft, pinnedPlace, hasSavedPlaces) {
+  if (draft.latitude == null) {
+    return hasSavedPlaces
+      ? 'Tap the map, search above, or pick one of your places.'
+      : 'Tap the map, or search above, to choose where this task lives.';
+  }
+  const name = pinnedPlace?.name ?? draft.placeName;
+  return name ? `At ${name}. Tap the map to move it.` : 'Pinned. Tap the map to move it.';
+}
+
 // The form for adding and editing a task. It doesn't keep the task's details
 // itself: HomeScreen owns them (the `draft`), because the map needs them too —
 // a tap on the map moves the draft's pin, and the radius slider here resizes
 // the circle drawn there. The form shows the draft and reports changes.
 //   places       saved places, offered as one-tap chips
 //   onPickPlace  a saved place was tapped (HomeScreen moves the pin and map)
+//   onRadiusSet  the distance slider was let go at a new distance
 //   onSavePlace  "Save this place" was tapped for the pinned spot
+//
+// The place comes straight after the name, with the distance slider at the
+// top of it: a task started from the map opens with the sheet at half height,
+// and this way the slider is in view without scrolling.
+//
+// Only the name box brings up the keyboard, and only when it's tapped. Every
+// other control here puts the keyboard away (see `tap`).
 export default function TaskForm({
   draft,
   onChange,
@@ -48,6 +67,7 @@ export default function TaskForm({
   placeRemindersOn,
   places = [],
   onPickPlace,
+  onRadiusSet,
   onSavePlace,
 }) {
   const [error, setError] = useState('');
@@ -62,11 +82,18 @@ export default function TaskForm({
       ? savedPlaceAt(places, draft.latitude, draft.longitude)
       : null;
 
+  // Wraps a button's action so pressing it also puts the keyboard away
+  const tap = action => () => {
+    Keyboard.dismiss();
+    action();
+  };
+
   // A time picker always shows a time, so give it one to start from.
   const addTime = () =>
     onChange({ timeOn: true, remindAt: draft.remindAt || startingTime(draft.date) });
 
   const submit = async () => {
+    Keyboard.dismiss();
     setError('');
 
     if (recording) {
@@ -121,13 +148,14 @@ export default function TaskForm({
     <View style={styles.form}>
       <View style={styles.titleRow}>
         <Text style={styles.title}>{editing ? 'Edit task' : 'New task'}</Text>
-        <Pressable onPress={onCancel} hitSlop={10} accessibilityLabel="Cancel">
+        <Pressable onPress={tap(onCancel)} hitSlop={10} accessibilityLabel="Cancel">
           <Ionicons name="close" size={24} color={colours.muted} />
         </Pressable>
       </View>
 
       {/* BottomSheetTextInput rather than TextInput: it tells the sheet to
-          make room when the keyboard opens */}
+          make room when the keyboard opens. No autoFocus: the keyboard waits
+          until the box is tapped, so the map and the circle stay in view. */}
       <BottomSheetTextInput
         style={styles.input}
         value={draft.name}
@@ -135,39 +163,8 @@ export default function TaskForm({
         placeholder="What needs doing?"
         placeholderTextColor={colours.faint}
         maxLength={255}
-        autoFocus={!editing}
+        returnKeyType="done"
       />
-
-      <DateTimeField
-        label="Date"
-        mode="date"
-        value={draft.date}
-        onChange={date => onChange({ date })}
-      />
-
-      <Text style={styles.label}>Remind me</Text>
-
-      {draft.timeOn ? (
-        <View style={styles.removableRow}>
-          <View style={styles.grow}>
-            <DateTimeField
-              label="At"
-              mode="time"
-              value={draft.remindAt}
-              onChange={remindAt => onChange({ remindAt })}
-            />
-          </View>
-          <Pressable
-            onPress={() => onChange({ timeOn: false })}
-            hitSlop={8}
-            accessibilityLabel="Remove the time"
-          >
-            <Ionicons name="close-circle" size={24} color={colours.faint} />
-          </Pressable>
-        </View>
-      ) : (
-        <AddRow icon="time-outline" label="Add a time" onPress={addTime} />
-      )}
 
       {draft.placeOn ? (
         <View style={styles.place}>
@@ -177,16 +174,34 @@ export default function TaskForm({
               size={20}
               color={draft.latitude != null ? colours.ink : colours.orange}
             />
-            <Text style={styles.placeText}>
-              {pinnedPlace
-                ? `At ${pinnedPlace.name}. Tap the map to move it.`
-                : draft.latitude != null
-                  ? 'Pinned. Tap the map to move it.'
-                  : places.length > 0
-                    ? 'Tap the map, search above, or pick one of your places.'
-                    : 'Tap the map, or search above, to choose where this task lives.'}
+            <Text style={styles.placeText} numberOfLines={3}>
+              {placeStatus(draft, pinnedPlace, places.length > 0)}
             </Text>
           </View>
+
+          {draft.latitude != null && (
+            <>
+              <View style={styles.radiusHeader}>
+                <Text style={styles.label}>Remind me within</Text>
+                <Text style={styles.radiusValue}>{draft.radius} m</Text>
+              </View>
+
+              <Slider
+                style={styles.slider}
+                minimumValue={RADIUS_MIN}
+                maximumValue={RADIUS_MAX}
+                step={10}
+                value={draft.radius}
+                onSlidingStart={Keyboard.dismiss}
+                onValueChange={radius => onChange({ radius })}
+                onSlidingComplete={radius => onRadiusSet?.(radius)}
+                minimumTrackTintColor={colours.orange}
+                maximumTrackTintColor={colours.border}
+                thumbTintColor={colours.ink}
+                accessibilityLabel="Reminder distance"
+              />
+            </>
+          )}
 
           {places.length > 0 && (
             <View style={styles.chips}>
@@ -195,7 +210,7 @@ export default function TaskForm({
                 return (
                   <Pressable
                     key={place.id}
-                    onPress={() => onPickPlace?.(place)}
+                    onPress={tap(() => onPickPlace?.(place))}
                     style={[styles.chip, chosen && styles.chipChosen]}
                   >
                     <Ionicons
@@ -213,27 +228,11 @@ export default function TaskForm({
           )}
 
           {draft.latitude != null && !pinnedPlace && (
-            <Pressable onPress={onSavePlace} style={styles.saveLink} hitSlop={6}>
+            <Pressable onPress={tap(onSavePlace)} style={styles.saveLink} hitSlop={6}>
               <Ionicons name="bookmark-outline" size={16} color={colours.orange} />
               <Text style={styles.saveLinkText}>Save this place for next time</Text>
             </Pressable>
           )}
-
-          <View style={styles.radiusHeader}>
-            <Text style={styles.label}>Remind me within</Text>
-            <Text style={styles.radiusValue}>{draft.radius} m</Text>
-          </View>
-
-          <Slider
-            minimumValue={RADIUS_MIN}
-            maximumValue={RADIUS_MAX}
-            step={10}
-            value={draft.radius}
-            onValueChange={radius => onChange({ radius })}
-            minimumTrackTintColor={colours.orange}
-            maximumTrackTintColor={colours.border}
-            thumbTintColor={colours.ink}
-          />
 
           {draft.trigger && (
             <Text style={styles.note}>
@@ -248,7 +247,7 @@ export default function TaskForm({
           )}
 
           <Pressable
-            onPress={() => onChange({ placeOn: false })}
+            onPress={tap(() => onChange({ placeOn: false }))}
             style={styles.removeLink}
             hitSlop={6}
           >
@@ -266,6 +265,35 @@ export default function TaskForm({
           hint="or tap the map"
           onPress={() => onChange({ placeOn: true })}
         />
+      )}
+
+      <DateTimeField
+        label="Date"
+        mode="date"
+        value={draft.date}
+        onChange={date => onChange({ date })}
+      />
+
+      {draft.timeOn ? (
+        <View style={styles.removableRow}>
+          <View style={styles.grow}>
+            <DateTimeField
+              label="Remind me at"
+              mode="time"
+              value={draft.remindAt}
+              onChange={remindAt => onChange({ remindAt })}
+            />
+          </View>
+          <Pressable
+            onPress={tap(() => onChange({ timeOn: false }))}
+            hitSlop={8}
+            accessibilityLabel="Remove the time"
+          >
+            <Ionicons name="close-circle" size={24} color={colours.faint} />
+          </Pressable>
+        </View>
+      ) : (
+        <AddRow icon="time-outline" label="Add a time" onPress={addTime} />
       )}
 
       {!draft.timeOn && !draft.placeOn && (
@@ -318,6 +346,8 @@ const styles = StyleSheet.create({
   },
   placeText: { flex: 1, fontSize: 14, color: colours.body, lineHeight: 19 },
   radiusHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  // A taller touch area than the default, so the thumb is easy to catch
+  slider: { height: 40 },
   radiusValue: { fontSize: 13, color: colours.ink, fontWeight: '600' },
   note: { fontSize: 12, color: colours.muted, lineHeight: 17 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

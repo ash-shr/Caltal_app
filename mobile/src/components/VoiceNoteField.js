@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -39,6 +39,7 @@ export default function VoiceNoteField({ value, taskId, onChange, onRecordingCha
   };
 
   const start = async () => {
+    Keyboard.dismiss();
     setProblem('');
     setNeedsSettings(false);
 

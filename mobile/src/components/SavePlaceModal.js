@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -57,7 +58,10 @@ export default function SavePlaceModal({ spot, onClose, onSaved }) {
         style={styles.backdrop}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.card}>
+        {/* The keyboard only comes up when the name box is tapped: often it
+            isn't needed, with a search result's name already filled in or a
+            suggestion to tap. A tap anywhere else on the card puts it away. */}
+        <Pressable style={styles.card} onPress={Keyboard.dismiss} accessible={false}>
           <Text style={styles.title}>Save this place</Text>
           {spot.address ? (
             <Text style={styles.address} numberOfLines={2}>
@@ -72,7 +76,6 @@ export default function SavePlaceModal({ spot, onClose, onSaved }) {
             placeholder="Name it, like Home or Gym"
             placeholderTextColor={colours.faint}
             maxLength={50}
-            autoFocus
             returnKeyType="done"
             onSubmitEditing={submit}
           />
@@ -82,7 +85,10 @@ export default function SavePlaceModal({ spot, onClose, onSaved }) {
               {suggestions.map(suggestion => (
                 <Pressable
                   key={suggestion}
-                  onPress={() => setName(suggestion)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setName(suggestion);
+                  }}
                   style={[styles.chip, name === suggestion && styles.chipChosen]}
                 >
                   <Text style={[styles.chipText, name === suggestion && styles.chipTextChosen]}>
@@ -97,7 +103,7 @@ export default function SavePlaceModal({ spot, onClose, onSaved }) {
 
           <Button title="Save place" onPress={submit} busy={busy} disabled={name.trim() === ''} />
           <Button title="Cancel" variant="quiet" onPress={onClose} />
-        </View>
+        </Pressable>
       </KeyboardAvoidingView>
     </Modal>
   );

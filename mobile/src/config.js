@@ -13,5 +13,9 @@ export const API_URL = `${WEBSITE_URL}/api`;
 // Public pages on the website the app links to
 export const PRIVACY_URL = `${WEBSITE_URL}/privacy`;
 
+// Where people can reach whoever runs Caltal. The same address as the
+// website's (frontend/src/config.js).
+export const CONTACT_EMAIL = 'ash.shr.005@gmail.com';
+
 // Where the map starts before we know where the person is: Leeds city centre.
 export const DEFAULT_CENTRE = { latitude: 53.7997, longitude: -1.5492 };

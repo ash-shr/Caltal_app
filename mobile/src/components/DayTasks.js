@@ -28,7 +28,7 @@ export default function DayTasks({ tasks, onOpen, onComplete }) {
   if (tasks.length === 0) {
     return (
       <Text style={styles.empty}>
-        Nothing on this day. Tap + to add a task, or press and hold anywhere on the map.
+        Nothing on this day. Tap + to add a task, or tap the map or search for a place to add one there.
       </Text>
     );
   }

@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# build files Android Studio or Gradle leave inside local native modules
+modules/*/android/.gradle/
+modules/*/android/build/
