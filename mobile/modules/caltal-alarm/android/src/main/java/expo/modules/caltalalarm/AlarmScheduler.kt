@@ -63,14 +63,20 @@ object AlarmScheduler {
     }
   }
 
+  // Whether alarms may go off at the exact minute. Android 12 and later let
+  // the person turn this off ("Alarms & reminders" in the phone's settings),
+  // and from Android 14 it starts off for new installs until they allow it.
+  fun canScheduleExact(context: Context) =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager(context).canScheduleExactAlarms()
+
   fun setExact(context: Context, at: Long, operation: PendingIntent) {
     val manager = alarmManager(context)
-    // Caltal declares USE_EXACT_ALARM, so this is normally allowed. If a phone
-    // says no anyway, an inexact alarm still rings, just possibly a bit late.
-    val exactAllowed =
-      Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
+    // Caltal asks for SCHEDULE_EXACT_ALARM, which the person allows from
+    // Settings in the app. Until they do, an inexact alarm still rings, just
+    // possibly a few minutes late. When they allow it, BootReceiver sets every
+    // alarm again, exactly.
     try {
-      if (exactAllowed) {
+      if (canScheduleExact(context)) {
         manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)
       } else {
         manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)

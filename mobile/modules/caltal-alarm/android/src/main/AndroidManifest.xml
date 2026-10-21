@@ -4,6 +4,12 @@
        person may have to allow this in the phone's settings; without it the
        reminder still rings, as a notification. -->
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <!-- Reminders at the exact minute. Since Android 12 the person can switch
+       this off, and from Android 14 it starts off until they allow it in
+       "Alarms & reminders"; reminders then still arrive, possibly late.
+       (Not USE_EXACT_ALARM: Google Play keeps that for alarm-clock and
+       calendar apps.) -->
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
   <!-- A phone restart forgets every alarm; this puts them back -->
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.VIBRATE" />
@@ -27,6 +33,7 @@
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
       </intent-filter>
     </receiver>
   </application>

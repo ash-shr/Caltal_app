@@ -11,4 +11,6 @@ import { requireOptionalNativeModule } from 'expo';
 //   ringNow(alarm)             ring straight away
 //   canRingFullScreen()        false on Android 14+ until the person allows it
 //   openFullScreenSettings()   opens the switch that allows it
+//   canScheduleExact()         whether reminders can go off at the exact minute
+//   openExactAlarmSettings()   opens "Alarms & reminders", the switch for that
 export default requireOptionalNativeModule('CaltalAlarm');

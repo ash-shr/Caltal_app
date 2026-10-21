@@ -66,5 +66,21 @@ class CaltalAlarmModule : Module() {
         context.startActivity(intent)
       }
     }
+
+    // Whether reminders, ringing or not, can go off at the exact minute
+    Function("canScheduleExact") {
+      AlarmScheduler.canScheduleExact(context)
+    }
+
+    // The "Alarms & reminders" switch for Caltal (Android 12+)
+    Function("openExactAlarmSettings") {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val intent = Intent(
+          Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+          Uri.parse("package:" + context.packageName)
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+      }
+    }
   }
 }

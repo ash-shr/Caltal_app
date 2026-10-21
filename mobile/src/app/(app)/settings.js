@@ -24,6 +24,7 @@ import {
   updateName,
 } from '../../api';
 import { usePlaceReminders } from '../../placeReminders';
+import { openExactReminderSettings, useExactRemindersAllowed } from '../../exactReminders';
 import { canRing, fullScreenAllowed, openFullScreenSettings } from '../../ringing';
 import { notificationsAllowed, sendTestReminder } from '../../timeReminders';
 import { clearAllReminders } from '../../reminders';
@@ -75,6 +76,9 @@ export default function Settings() {
 
   // Android 14+: whether ringing reminders may fill the screen
   const [fullScreenOn, setFullScreenOn] = useState(fullScreenAllowed);
+
+  // Android 12+: whether reminders can go off at the exact minute
+  const exactOn = useExactRemindersAllowed();
 
   useEffect(() => {
     getMe()
@@ -348,6 +352,19 @@ export default function Settings() {
                 title="Open phone settings"
                 variant="secondary"
                 onPress={() => Linking.openSettings()}
+              />
+            </View>
+          )}
+          {settings.timeReminders && notificationsOn !== false && !exactOn && (
+            <View style={styles.stack}>
+              <Text style={styles.warning}>
+                {'Android may send reminders a few minutes late until Caltal is allowed to ' +
+                  'set exact alarms. Turn on "Allow setting alarms and reminders" for Caltal.'}
+              </Text>
+              <Button
+                title="Allow exact reminders"
+                variant="secondary"
+                onPress={openExactReminderSettings}
               />
             </View>
           )}

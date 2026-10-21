@@ -8,6 +8,7 @@ import Button from './Button';
 import DateTimeField from './DateTimeField';
 import VoiceNoteField from './VoiceNoteField';
 import { today } from '../dates';
+import { openExactReminderSettings, useExactRemindersAllowed } from '../exactReminders';
 import { savedPlaceAt } from '../places';
 import { RADIUS_MAX, RADIUS_MIN } from '../settings';
 import { colours } from '../theme';
@@ -73,6 +74,8 @@ export default function TaskForm({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  // Android 12+: whether a reminder time will be kept to the minute
+  const exactAllowed = useExactRemindersAllowed();
 
   const editing = draft.taskId != null;
 
@@ -296,6 +299,15 @@ export default function TaskForm({
         <AddRow icon="time-outline" label="Add a time" onPress={addTime} />
       )}
 
+      {draft.timeOn && !exactAllowed && (
+        <Text style={styles.note}>
+          {'This phone may send the reminder a few minutes late. '}
+          <Text style={styles.noteLink} onPress={tap(openExactReminderSettings)}>
+            Allow exact reminders
+          </Text>
+        </Text>
+      )}
+
       {!draft.timeOn && !draft.placeOn && (
         <Text style={styles.note}>
           No reminder: it will just sit on its day in the calendar.
@@ -350,6 +362,7 @@ const styles = StyleSheet.create({
   slider: { height: 40 },
   radiusValue: { fontSize: 13, color: colours.ink, fontWeight: '600' },
   note: { fontSize: 12, color: colours.muted, lineHeight: 17 },
+  noteLink: { color: colours.orange, fontWeight: '600' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row',
