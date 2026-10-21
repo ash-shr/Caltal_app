@@ -46,7 +46,7 @@ function PrivacyPage({ signedIn }) {
       <Paragraph>
         This policy explains what personal data Caltal collects, why it is collected, who it is
         shared with, how long it is kept, and the rights you have over it. It applies to the
-        Caltal website (caltal.fly.dev) and the Caltal phone app.
+        Caltal website (caltal.app) and the Caltal phone app.
       </Paragraph>
 
       <section className="space-y-2">

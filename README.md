@@ -2,7 +2,7 @@
 
 A location-aware task service. Tasks are pinned to a place with a radius, and the API tells you which of your tasks you're currently near — so "buy milk" surfaces when you're by the shop rather than when you're at home.
 
-**Live API:** https://caltal.fly.dev/api/tasks
+**Live:** https://caltal.app (website), with the API at https://caltal.app/api
 
 Built as a Spring Boot REST API with PostgreSQL, containerised, and deployed to Fly.io. Also deployed to AWS ECS Fargate with RDS as an exercise in cloud infrastructure.
 
@@ -109,7 +109,7 @@ Returns `201 Created` with the saved task. Invalid coordinates or a missing due 
 Example:
 
 ```bash
-curl -X POST https://caltal.fly.dev/api/tasks \
+curl -X POST https://caltal.app/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"name":"buy milk","latitude":53.7960,"longitude":-1.5450,"radius":200,"dueDate":"2026-09-21"}'
 ```

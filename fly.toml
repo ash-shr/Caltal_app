@@ -11,7 +11,9 @@ primary_region = 'lhr'
 # Settings that aren't secret. Secrets (JWT_SECRET, DB_PASSWORD,
 # RESEND_API_KEY...) are set with `fly secrets set` and never written here.
 [env]
-  APP_URL = 'https://caltal.fly.dev'
+  # The website's address, used in emailed links. caltal.fly.dev still works,
+  # but caltal.app is the one people see.
+  APP_URL = 'https://caltal.app'
 
 [http_service]
   internal_port = 8080

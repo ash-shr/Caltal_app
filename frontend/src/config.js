@@ -1,5 +1,7 @@
-// Restricted to caltal.fly.dev and localhost in the MapTiler dashboard, so it
-// being visible in the bundle is expected rather than a leak.
+// Restricted to caltal.app, caltal.fly.dev and localhost in the MapTiler
+// dashboard, so it being visible in the bundle is expected rather than a leak.
+// A new address for the website has to be added there too, or the map stays
+// blank on it.
 export const MAP_KEY = import.meta.env.VITE_MAP_KEY ?? '';
 
 // The same map style as the phone app (mobile/src/config.js)

@@ -1,6 +1,6 @@
 // Point at a local backend during development by creating frontend/.env.local
 // containing: VITE_API_URL=http://localhost:8080/api
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://caltal.fly.dev/api';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://caltal.app/api';
 
 const TOKEN_KEY = 'caltal_token';
 const USER_KEY = 'caltal_user';

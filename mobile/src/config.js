@@ -6,7 +6,9 @@ export const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY ?? '';
 
 export const MAP_STYLE = `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`;
 
-export const WEBSITE_URL = 'https://caltal.fly.dev';
+// The website and the API behind it. caltal.fly.dev reaches the same server,
+// and builds made before the move still use it.
+export const WEBSITE_URL = 'https://caltal.app';
 
 export const API_URL = `${WEBSITE_URL}/api`;
 

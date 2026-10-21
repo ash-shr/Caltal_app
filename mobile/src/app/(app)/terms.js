@@ -12,7 +12,7 @@ const SECTIONS = [
     heading: 'About Caltal',
     body:
       'Caltal is a task app that reminds you about tasks at a time, at a place, or both. It is ' +
-      'available as a website (caltal.fly.dev) and a phone app, and is provided by Ashutosh Sharma, ' +
+      'available as a website (caltal.app) and a phone app, and is provided by Ashutosh Sharma, ' +
       'a developer based in the United Kingdom (“we”, “us”). By creating an account or using Caltal, ' +
       'you agree to these terms.',
   },
