@@ -87,7 +87,7 @@ function Auth({ onAuthenticated, notice }) {
           <img
             src="/logo.png"
             alt=""
-            className="mx-auto mb-5 h-36 w-36"
+            className="mx-auto mb-5 h-24 w-24"
             draggable="false"
           />
           <h1 className="text-2xl font-medium tracking-tight text-stone-800">Caltal</h1>

@@ -8,7 +8,7 @@ function LinkPage({ title, children }) {
           <img
             src="/logo.png"
             alt=""
-            className="mx-auto mb-5 h-24 w-24"
+            className="mx-auto mb-5 h-20 w-20"
             draggable="false"
           />
           <h1 className="text-xl font-medium tracking-tight text-stone-800">{title}</h1>

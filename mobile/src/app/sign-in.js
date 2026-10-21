@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 32,
   },
-  logo: { width: 132, height: 132, alignSelf: 'center', marginBottom: 12 },
+  // The orange fills its image edge to edge, so this is the size it shows at
+  logo: { width: 96, height: 96, alignSelf: 'center', marginBottom: 16 },
   title: {
     fontSize: 32,
     fontWeight: '600',
