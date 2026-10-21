@@ -4,15 +4,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Settings that only matter on this phone live on this phone. They're not
 // secret, so AsyncStorage (plain on-device storage) is enough — SecureStore is
 // kept for the session token.
-const STORAGE_KEY = 'caltal_settings';
+export const STORAGE_KEY = 'caltal_settings';
 
 export const DEFAULT_SETTINGS = {
   timeReminders: true,
   // Off until the person turns it on: it needs "Always" location permission,
   // which is better asked for when they choose it than at first launch.
   placeReminders: false,
+  // Android: reminders ring like an alarm, full screen, instead of being
+  // ordinary notifications. Off until the person chooses it.
+  ringReminders: false,
   defaultRadius: 200,
 };
+
+// For the place-reminder task, which can run with the rest of the app not
+// loaded: the saved settings, read straight from the phone's storage.
+export async function readStoredSettings() {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
 
 export const RADIUS_MIN = 50;
 export const RADIUS_MAX = 2000;

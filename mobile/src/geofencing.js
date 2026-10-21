@@ -4,6 +4,8 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { today } from './dates';
 import { reminderChannel } from './notificationChannel';
+import { canRing, ringNow } from './ringing';
+import { readStoredSettings } from './settings';
 
 // The name the OS knows this background job by. It must be registered at module
 // load — before React renders — because the system can start the app straight
@@ -15,8 +17,9 @@ export const GEOFENCE_TASK = 'caltal-geofence';
 export const MAX_REGIONS = 18;
 
 // What's currently registered with the phone: a fingerprint of the regions,
-// and each region's task name for the notification. Saved on the phone because
-// the background task can run with the rest of the app not loaded at all.
+// and for each region its task's name and whether it has a voice note (for
+// the notification, or the ringing screen). Saved on the phone because the
+// background task can run with the rest of the app not loaded at all.
 const WATCHED_KEY = 'caltal_watched_places';
 
 async function readWatched() {
@@ -42,12 +45,31 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   }
 
   const watched = await readWatched();
+  const title = watched?.names?.[region.identifier] ?? 'A task is nearby';
+  const body = 'You are near somewhere you have something to do.';
+
+  // Set to ring like an alarm (Android): the ringing screen instead
+  const settings = await readStoredSettings();
+  if (settings.ringReminders && canRing) {
+    const taskId = Number(region.identifier.replace('task-', ''));
+    await ringNow({
+      // Each arrival rings on its own
+      id: `place-${region.identifier}-${Date.now()}`,
+      at: Date.now(),
+      title,
+      body,
+      taskId: Number.isFinite(taskId) ? taskId : null,
+      hasVoiceNote: Boolean(watched?.voiceNotes?.[region.identifier]),
+    });
+    return;
+  }
+
   const channelId = await reminderChannel();
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: watched?.names?.[region.identifier] ?? 'A task is nearby',
-      body: 'You are near somewhere you have something to do.',
+      title,
+      body,
     },
     // A channel and no time means "show it now, on that channel". null means
     // "show it now" on the default one.
@@ -99,17 +121,23 @@ export async function watchPlaces(tasks) {
   // Registering a region makes the phone check straight away whether you're
   // already inside it — and say "arrived" if you are. So re-register only
   // when the regions actually changed, or opening the app at home would
-  // remind you about your home task every single time.
+  // remind you about your home task every single time. The names and voice
+  // notes are saved every time, though: they can change without the regions
+  // changing.
   const fingerprint = JSON.stringify(regions);
   const watched = await readWatched();
   const running = await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK);
+
+  const names = Object.fromEntries(chosen.map(task => [`task-${task.id}`, task.name]));
+  const voiceNotes = Object.fromEntries(
+    chosen.map(task => [`task-${task.id}`, task.voiceNoteMs != null]),
+  );
+  await AsyncStorage.setItem(WATCHED_KEY, JSON.stringify({ fingerprint, names, voiceNotes }));
 
   if (running && watched?.fingerprint === fingerprint) {
     return regions.length;
   }
 
-  const names = Object.fromEntries(chosen.map(task => [`task-${task.id}`, task.name]));
-  await AsyncStorage.setItem(WATCHED_KEY, JSON.stringify({ fingerprint, names }));
   await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
   return regions.length;
 }

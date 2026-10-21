@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -32,6 +32,10 @@ import { useSession } from '../../session';
 import { useSettings } from '../../settings';
 import { hasPlace, useTasks } from '../../tasks';
 import { colours, floating } from '../../theme';
+
+// Whether the link Caltal was opened with has been dealt with (see
+// openLinkedTask). Kept outside the component: it's once per app start.
+let initialLinkHandled = false;
 
 // How tall the sheet can be, as a share of the screen: peeking, half, full.
 const SNAP_FRACTIONS = [0.16, 0.5, 0.92];
@@ -147,6 +151,9 @@ export default function Home() {
   const [sheetIndex, setSheetIndex] = useState(HALF);
   const [menuOpen, setMenuOpen] = useState(false);
   const [canShowLocation, setCanShowLocation] = useState(false);
+  // The task whose voice note should start by itself (after answering a
+  // ringing reminder)
+  const [autoPlayId, setAutoPlayId] = useState(null);
 
   const selectedTask = tasks.find(task => task.id === selectedId) ?? null;
 
@@ -210,8 +217,10 @@ export default function Home() {
 
   // ---- Moving between calendar, task and form ----
 
-  const openTask = task => {
+  // play: start its voice note straight away (from a ringing reminder)
+  const openTask = (task, { play = false } = {}) => {
     Keyboard.dismiss();
+    setAutoPlayId(play && task.voiceNoteMs != null ? task.id : null);
     setSelectedId(task.id);
     setSelectedDate(task.dueDate);
     setMode('task');
@@ -221,6 +230,37 @@ export default function Home() {
       sheet.current?.snapToIndex(HALF);
     }
   };
+
+  // Answering a ringing reminder opens Caltal with caltal://?task=12&play=1:
+  // show that task, and play its voice note if it has one. The task list is
+  // loaded fresh first, so a task added on the website a moment ago is there.
+  const openLinkedTask = useEffectEvent(url => {
+    const taskId = /[?&]task=(\d+)/.exec(url)?.[1];
+    if (!taskId) {
+      return;
+    }
+    const play = /[?&]play=1\b/.test(url);
+    refresh().then(latest => {
+      const task = (latest ?? tasks).find(candidate => String(candidate.id) === taskId);
+      if (task) {
+        openTask(task, { play });
+      }
+    });
+  });
+
+  useEffect(() => {
+    // The link Caltal was started with, if it was closed. Only once: the home
+    // screen can appear again (after signing in again) in the same session.
+    if (!initialLinkHandled) {
+      initialLinkHandled = true;
+      Linking.getInitialURL()
+        .then(url => url && openLinkedTask(url))
+        .catch(() => {});
+    }
+    // Links that arrive while Caltal is already open
+    const subscription = Linking.addEventListener('url', ({ url }) => openLinkedTask(url));
+    return () => subscription.remove();
+  }, []);
 
   const backToCalendar = () => {
     setMode('calendar');
@@ -535,6 +575,8 @@ export default function Home() {
           {mode === 'task' && selectedTask && (
             <TaskDetail
               task={selectedTask}
+              autoPlay={autoPlayId === selectedTask.id}
+              onAutoPlayed={() => setAutoPlayId(null)}
               onBack={backToCalendar}
               onEdit={() => startEditing(selectedTask)}
               onComplete={() => complete(selectedTask.id)}

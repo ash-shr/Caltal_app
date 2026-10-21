@@ -1,0 +1,8 @@
+{
+  "name": "caltal-alarm",
+  "version": "1.0.0",
+  "description": "Ringing reminders for Caltal on Android: a full-screen screen that rings until answered, snoozed or dismissed",
+  "main": "index.js",
+  "private": true,
+  "license": "MIT"
+}

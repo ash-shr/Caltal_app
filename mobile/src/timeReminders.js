@@ -1,5 +1,12 @@
 import * as Notifications from 'expo-notifications';
 import { reminderChannel } from './notificationChannel';
+import {
+  canRing,
+  cancelRinging,
+  replaceRinging,
+  ringingAlarm,
+  scheduleRinging,
+} from './ringing';
 
 // Time reminders are scheduled on the phone itself. Once handed to the OS they
 // fire at the right moment even if the app is closed or the phone is offline —
@@ -23,7 +30,13 @@ function reminderTime(task) {
   return new Date(year, month - 1, day, hour, minute);
 }
 
+// Both kinds: the ordinary notifications and, on Android, the ringing ones
 export async function clearTimeReminders() {
+  await clearNotificationReminders();
+  await cancelRinging();
+}
+
+async function clearNotificationReminders() {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
 
   await Promise.all(
@@ -61,8 +74,9 @@ async function canNotify() {
 }
 
 // Replaces whatever was scheduled before with reminders for these tasks.
+// ring: they ring like an alarm instead of being notifications (Android).
 // Returns how many were scheduled.
-export async function scheduleTimeReminders(tasks) {
+export async function scheduleTimeReminders(tasks, { ring = false } = {}) {
   if (!(await canNotify())) {
     return 0;
   }
@@ -76,7 +90,23 @@ export async function scheduleTimeReminders(tasks) {
     .sort((a, b) => a.at - b.at)
     .slice(0, MAX_SCHEDULED);
 
-  await clearTimeReminders();
+  await clearNotificationReminders();
+
+  if (ring && canRing) {
+    // Snoozed ones are kept; everything else is replaced
+    await replaceRinging(
+      upcoming.map(({ task, at }) =>
+        ringingAlarm(task, {
+          id: `time-${task.id}`,
+          at: at.getTime(),
+          body: `Reminder for ${task.remindAt.slice(0, 5)}`,
+        }),
+      ),
+    );
+    return upcoming.length;
+  }
+
+  await cancelRinging();
   const channelId = await reminderChannel();
 
   for (const { task, at } of upcoming) {
@@ -102,9 +132,21 @@ export async function scheduleTimeReminders(tasks) {
 // For Settings: a reminder a minute from now, sent exactly the way real ones
 // are, so it shows whether reminders reach this phone at all. Returns false if
 // the phone won't allow notifications.
-export async function sendTestReminder() {
+export async function sendTestReminder({ ring = false } = {}) {
   if (!(await canNotify())) {
     return false;
+  }
+
+  if (ring && canRing) {
+    await scheduleRinging({
+      id: 'test',
+      at: Date.now() + 60 * 1000,
+      title: 'Test reminder',
+      body: 'This is how Caltal rings. Answer, snooze or dismiss it.',
+      taskId: null,
+      hasVoiceNote: false,
+    });
+    return true;
   }
 
   const channelId = await reminderChannel();

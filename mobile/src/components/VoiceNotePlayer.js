@@ -10,7 +10,14 @@ import { colours } from '../theme';
 //   fileUri     a recording on this phone that hasn't been saved yet, or
 //   taskId      the task whose saved note to play from the server
 //   durationMs  the note's length, shown before it has loaded
-export default function VoiceNotePlayer({ fileUri, taskId, durationMs }) {
+//   autoPlay    start playing as soon as it has loaded; onAutoPlayed is told
+export default function VoiceNotePlayer({
+  fileUri,
+  taskId,
+  durationMs,
+  autoPlay = false,
+  onAutoPlayed,
+}) {
   // Streams from the server, with the sign-in token sent as a header. (The
   // player's "download first" option can't send headers, so it isn't used.)
   const player = useAudioPlayer(null, { updateInterval: 250 });
@@ -37,6 +44,18 @@ export default function VoiceNotePlayer({ fileUri, taskId, durationMs }) {
       cancelled = true;
     };
   }, [player, fileUri, taskId, durationMs, noteKey]);
+
+  // Answering a ringing reminder plays the note straight away
+  useEffect(() => {
+    if (autoPlay && status.isLoaded && !status.playing) {
+      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true })
+        .catch(() => {})
+        .then(() => {
+          player.play();
+          onAutoPlayed?.();
+        });
+    }
+  }, [autoPlay, status.isLoaded, status.playing, player, onAutoPlayed]);
 
   // Back to the start once it has played through, ready to play again
   useEffect(() => {

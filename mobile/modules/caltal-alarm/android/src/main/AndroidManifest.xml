@@ -1,0 +1,33 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- The ringing screen over the lock screen. On Android 14 and later the
+       person may have to allow this in the phone's settings; without it the
+       reminder still rings, as a notification. -->
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <!-- A phone restart forgets every alarm; this puts them back -->
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <application>
+    <!-- Shows over the lock screen and turns the screen on. Its own task, so
+         answering or dismissing it doesn't disturb the app behind it. -->
+    <activity
+      android:name=".RingActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:launchMode="singleInstance"
+      android:taskAffinity="expo.modules.caltalalarm.ring"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@android:style/Theme.Material.NoActionBar" />
+
+    <receiver android:name=".AlarmReceiver" android:exported="false" />
+
+    <receiver android:name=".BootReceiver" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

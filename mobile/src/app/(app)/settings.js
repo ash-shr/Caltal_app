@@ -24,6 +24,7 @@ import {
   updateName,
 } from '../../api';
 import { usePlaceReminders } from '../../placeReminders';
+import { canRing, fullScreenAllowed, openFullScreenSettings } from '../../ringing';
 import { notificationsAllowed, sendTestReminder } from '../../timeReminders';
 import { clearAllReminders } from '../../reminders';
 import { useSession } from '../../session';
@@ -72,6 +73,9 @@ export default function Settings() {
   // Whether the phone lets Caltal show notifications. Null until known.
   const [notificationsOn, setNotificationsOn] = useState(null);
 
+  // Android 14+: whether ringing reminders may fill the screen
+  const [fullScreenOn, setFullScreenOn] = useState(fullScreenAllowed);
+
   useEffect(() => {
     getMe()
       .then(setMe)
@@ -90,6 +94,7 @@ export default function Settings() {
           });
         // They may have just switched notifications on in the phone's settings
         notificationsAllowed().then(setNotificationsOn).catch(() => {});
+        setFullScreenOn(fullScreenAllowed());
       }
     });
     return () => subscription.remove();
@@ -101,11 +106,13 @@ export default function Settings() {
   const sendTest = async () => {
     setTestState({ busy: true, message: '' });
     try {
-      if (await sendTestReminder()) {
+      const ring = settings.ringReminders && canRing;
+      if (await sendTestReminder({ ring })) {
         setTestState({
           busy: false,
-          message:
-            'Sent. It should arrive in about a minute, even with your phone locked or Caltal closed.',
+          message: ring
+            ? 'Set. In about a minute Caltal will ring, even with your phone locked or Caltal closed.'
+            : 'Sent. It should arrive in about a minute, even with your phone locked or Caltal closed.',
         });
       } else {
         setNotificationsOn(false);
@@ -369,6 +376,32 @@ export default function Settings() {
                 onPress={() => Linking.openSettings()}
               />
             </View>
+          )}
+
+          {canRing && (
+            <>
+              <View style={styles.divider} />
+
+              <Toggle
+                label="Ring like an alarm"
+                hint="Instead of a notification, reminders fill the screen and ring until you answer, snooze or dismiss them, even with the phone locked or on silent. Answering opens the task and plays its voice note."
+                value={settings.ringReminders}
+                onChange={on => updateSettings({ ringReminders: on })}
+              />
+              {settings.ringReminders && !fullScreenOn && (
+                <View style={styles.stack}>
+                  <Text style={styles.warning}>
+                    {'To ring over the lock screen, Caltal needs permission to show full-screen ' +
+                      'alerts. Without it, reminders still ring, as a pop-up.'}
+                  </Text>
+                  <Button
+                    title="Allow full-screen alerts"
+                    variant="secondary"
+                    onPress={openFullScreenSettings}
+                  />
+                </View>
+              )}
+            </>
           )}
 
           <View style={styles.divider} />

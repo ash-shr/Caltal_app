@@ -23,7 +23,18 @@ function Line({ icon, children }) {
   );
 }
 
-export default function TaskDetail({ task, onBack, onEdit, onComplete, onDelete, onShowOnMap }) {
+// autoPlay: play the voice note as soon as it's loaded (after answering a
+// ringing reminder); onAutoPlayed is told once it has started.
+export default function TaskDetail({
+  task,
+  autoPlay = false,
+  onAutoPlayed,
+  onBack,
+  onEdit,
+  onComplete,
+  onDelete,
+  onShowOnMap,
+}) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
@@ -79,7 +90,12 @@ export default function TaskDetail({ task, onBack, onEdit, onComplete, onDelete,
       {task.voiceNoteMs != null && (
         <View style={styles.voice}>
           <Text style={styles.voiceLabel}>Voice note</Text>
-          <VoiceNotePlayer taskId={task.id} durationMs={task.voiceNoteMs} />
+          <VoiceNotePlayer
+            taskId={task.id}
+            durationMs={task.voiceNoteMs}
+            autoPlay={autoPlay}
+            onAutoPlayed={onAutoPlayed}
+          />
         </View>
       )}
 

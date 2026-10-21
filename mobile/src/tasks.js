@@ -59,12 +59,18 @@ export function TasksProvider({ children }) {
   }, []);
 
   // Load once settings are known, and again whenever reminders are switched on
-  // or off, so they get rescheduled.
+  // or off (or to ringing), so they get rescheduled.
   useEffect(() => {
     if (settingsLoaded) {
       refresh();
     }
-  }, [settingsLoaded, settings.timeReminders, settings.placeReminders, refresh]);
+  }, [
+    settingsLoaded,
+    settings.timeReminders,
+    settings.placeReminders,
+    settings.ringReminders,
+    refresh,
+  ]);
 
   // Coming back to the app is a good moment to catch up: tasks may have been
   // added on the website in the meantime.

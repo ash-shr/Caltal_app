@@ -46,7 +46,7 @@ export function syncReminders(tasks, getSettings) {
     const settings = getSettings();
 
     if (settings.timeReminders) {
-      await scheduleTimeReminders(tasks);
+      await scheduleTimeReminders(tasks, { ring: settings.ringReminders });
     } else {
       await clearTimeReminders();
     }
