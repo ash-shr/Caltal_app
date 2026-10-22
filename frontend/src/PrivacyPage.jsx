@@ -134,7 +134,7 @@ function PrivacyPage({ signedIn }) {
           items={[
             'We collect only what the Service needs: your account, your tasks, the places you save and any voice notes you record.',
             'Your live location is used on your phone to trigger place reminders. It is not sent to our server.',
-            'We do not show adverts, use analytics or tracking tools, or sell your data.',
+            'We do not show adverts, use analytics or tracking tools, or sell your data. If something goes wrong, an error report helps us fix it; it does not include your name, email address or location.',
             'You can delete your account, and everything in it, at any time.',
           ]}
         />
@@ -203,6 +203,11 @@ function PrivacyPage({ signedIn }) {
               'Your IP address and basic technical information sent with every internet request, such as the app version.',
               'Your device, automatically',
             ],
+            [
+              'Error reports',
+              'If the app or the server runs into an error: what went wrong and where in the code, the app version, and your phone’s model and operating system version. They do not include your name, email address, tasks or location.',
+              'Your device and our server, automatically',
+            ],
             ['Messages', 'Anything you write when you contact us.', 'You'],
           ]}
         />
@@ -239,6 +244,11 @@ function PrivacyPage({ signedIn }) {
               'Keeping the Service secure, for example limiting repeated sign-in attempts',
               'IP address, account details',
               'Our legitimate interest in protecting the Service and your account',
+            ],
+            [
+              'Finding and fixing errors and crashes',
+              'Error reports',
+              'Our legitimate interest in keeping the Service working',
             ],
             [
               'Answering your questions and requests',
@@ -312,6 +322,11 @@ function PrivacyPage({ signedIn }) {
               'Delivers updates to the phone app. It receives technical details such as the app version and your phone’s operating system.',
               'United States',
             ],
+            [
+              'Sentry',
+              'Receives error and crash reports, so we can find and fix problems.',
+              'Data stored in Germany (EU). Sentry is a US company.',
+            ],
           ]}
         />
         <Paragraph>
@@ -351,6 +366,7 @@ function PrivacyPage({ signedIn }) {
               'IP addresses used to protect sign-in',
               'Held only briefly in the server’s memory, and never written to the database.',
             ],
+            ['Error reports', 'Deleted automatically by Sentry within 90 days.'],
             ['Messages you send us', 'As long as needed to deal with them.'],
           ]}
         />

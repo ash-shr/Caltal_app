@@ -12,7 +12,10 @@
     "preview": {
       "environment": "preview",
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
     },
     "simulator": {
       "extends": "preview",
@@ -23,7 +26,10 @@
     "production": {
       "environment": "production",
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
     }
   },
   "submit": {

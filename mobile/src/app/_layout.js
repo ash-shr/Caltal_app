@@ -6,9 +6,13 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Splash from '../components/Splash';
+import { startErrorReporting, withErrorReporting } from '../errorReporting';
 import { SessionProvider, useSession } from '../session';
 import { SettingsProvider } from '../settings';
 import { colours } from '../theme';
+
+// First, so an error anywhere after this is reported
+startErrorReporting();
 
 // Keep the phone's own still splash up until the animated one is ready to
 // take over, so there's no white flash in between.
@@ -16,7 +20,9 @@ SplashScreen.preventAutoHideAsync();
 
 // The root layout wraps every screen in the app. Providers go here so that
 // anything below can read the session and settings.
-export default function RootLayout() {
+export default withErrorReporting(RootLayout);
+
+function RootLayout() {
   return (
     // Needed by anything that uses gestures — the bottom sheet, mainly.
     <GestureHandlerRootView style={styles.fill}>

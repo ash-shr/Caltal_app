@@ -94,6 +94,14 @@
           "enableBackgroundRecording": false,
           "enableBackgroundPlayback": false
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "organization": "caltal",
+          "project": "caltal-app"
+        }
       ]
     ],
     "extra": {

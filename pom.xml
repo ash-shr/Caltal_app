@@ -18,6 +18,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Both Sentry libraries move together -->
+        <sentry.version>8.61.1</sentry.version>
     </properties>
 
     <!-- Spring Boot 4 is split into smaller pieces: each starter brings only one
@@ -80,6 +82,20 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>0.12.6</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Error reports to Sentry (sentry.io). Off unless SENTRY_DSN is set;
+             see application.properties. The Logback part turns logged
+             warnings and errors into reports too, not just crashes. -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-4</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
         </dependency>
 
         <!-- Tests. Each of these also brings JUnit, Mockito and AssertJ. -->
