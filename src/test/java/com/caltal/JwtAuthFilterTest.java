@@ -42,12 +42,25 @@ class JwtAuthFilterTest {
     @Test
     void acceptsACurrentToken() throws Exception {
         User user = new User("ash@example.com", "hash", "Ash");
+        user.markEmailVerified();
         when(jwtService.parse("current")).thenReturn(new JwtService.TokenClaims("ash@example.com", 0));
         when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(user));
 
         sendWithToken("current");
 
         assertEquals("ash@example.com", signedInAs());
+    }
+
+    @Test
+    void refusesATokenForAnAccountWhoseEmailIsntConfirmed() throws Exception {
+        User user = new User("ash@example.com", "hash", "Ash");
+        when(jwtService.parse("unconfirmed"))
+                .thenReturn(new JwtService.TokenClaims("ash@example.com", 0));
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(user));
+
+        sendWithToken("unconfirmed");
+
+        assertNull(signedInAs());
     }
 
     @Test

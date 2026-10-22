@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   AppState,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -13,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import Constants from 'expo-constants';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
@@ -228,16 +226,14 @@ export default function Settings() {
   const hasPassword = me?.hasPassword !== false;
 
   return (
-    <KeyboardAvoidingView
+    // Keeps the box being typed in (name, passwords) above the keyboard
+    <KeyboardAwareScrollView
       style={styles.fill}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={100}
+      contentContainerStyle={styles.content}
+      bottomOffset={24}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
         <Section title="Account">
           <Text style={styles.rowLabel}>Name</Text>
           <Field value={name} onChangeText={setName} maxLength={100} textContentType="name" />
@@ -481,8 +477,7 @@ export default function Settings() {
         </Section>
 
         <Text style={styles.version}>Caltal {Constants.expoConfig?.version ?? ''}</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 

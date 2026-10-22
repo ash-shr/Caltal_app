@@ -1,7 +1,15 @@
 import { useState } from 'react';
-import { login, register, loginWithGoogle, requestPasswordReset } from './api';
+import {
+  confirmWithCode,
+  login,
+  register,
+  loginWithGoogle,
+  requestPasswordReset,
+  resendCode,
+} from './api';
 import Splash from './Splash';
 import GoogleButton from './GoogleButton';
+import { GOOGLE_CLIENT_ID } from './config';
 import { navigate } from './router';
 import { buttonClass, inputClass, linkButtonClass } from './ui';
 
@@ -20,13 +28,23 @@ function Auth({ onAuthenticated, notice }) {
   // The address a reset link was asked for, once it has been
   const [resetSentTo, setResetSentTo] = useState('');
 
+  // Confirming the email: the address the code went to, what's been typed,
+  // and where the person came from (to go back to)
+  const [codeFor, setCodeFor] = useState('');
+  const [code, setCode] = useState('');
+  const [cameFrom, setCameFrom] = useState('register');
+  const [codeNotice, setCodeNotice] = useState('');
+  const [resending, setResending] = useState(false);
+
   const isRegistering = mode === 'register';
   const isForgot = mode === 'forgot';
+  const isCode = mode === 'code';
 
   const switchTo = (next) => {
     setMode(next);
     setError('');
     setResetSentTo('');
+    setCodeNotice('');
   };
 
   const handleSubmit = async (event) => {
@@ -39,11 +57,50 @@ function Auth({ onAuthenticated, notice }) {
         ? await register(email, password, name)
         : await login(email, password);
 
-      onAuthenticated(result);
+      if (result.confirmEmail) {
+        // Not signed in yet: the email has to be confirmed first
+        setCameFrom(mode);
+        setCodeFor(result.email);
+        setCode('');
+        switchTo('code');
+      } else {
+        onAuthenticated(result);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleCode = async (event) => {
+    event?.preventDefault();
+    setError('');
+    setCodeNotice('');
+    setBusy(true);
+
+    try {
+      onAuthenticated(await confirmWithCode(codeFor, password, code));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError('');
+    setCodeNotice('');
+    setResending(true);
+
+    try {
+      await resendCode(codeFor, password);
+      setCode('');
+      setCodeNotice('A new code is on its way. Any earlier code no longer works.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -100,7 +157,47 @@ function Auth({ onAuthenticated, notice }) {
           </p>
         )}
 
-        {isForgot ? (
+        {isCode ? (
+          <form onSubmit={handleCode} className="space-y-3">
+            <p className="text-center font-medium text-stone-800">Confirm your email</p>
+            <p className="text-center text-sm leading-relaxed text-stone-500">
+              {`We've sent a 6-digit code to ${codeFor}. Enter it below. It can take a minute `
+                + 'to arrive, so check your spam folder too.'}
+            </p>
+
+            <input
+              className={inputClass + ' text-center text-2xl tracking-[0.5em]'}
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              aria-label="Code from the email"
+              maxLength={6}
+              autoFocus
+            />
+
+            <button type="submit" disabled={busy || code.length !== 6} className={buttonClass}>
+              {busy ? 'Checking…' : 'Confirm'}
+            </button>
+
+            {codeNotice && <p className="text-center text-sm text-stone-600">{codeNotice}</p>}
+
+            <div className="flex justify-between pt-1 text-sm">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className={linkButtonClass}
+              >
+                {resending ? 'Sending…' : 'Send a new code'}
+              </button>
+              <button type="button" onClick={() => switchTo(cameFrom)} className={linkButtonClass}>
+                Use a different email
+              </button>
+            </div>
+          </form>
+        ) : isForgot ? (
           resetSentTo ? (
             <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm leading-relaxed text-stone-600">
               <p className="mb-1 font-medium text-stone-800">Check your email</p>
@@ -135,7 +232,7 @@ function Auth({ onAuthenticated, notice }) {
           <>
             <GoogleButton onCredential={handleGoogle} onError={setError} />
 
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            {GOOGLE_CLIENT_ID && (
               <div className="my-6 flex items-center gap-3 text-xs text-stone-400">
                 <span className="h-px flex-1 bg-stone-200" />
                 or with email
@@ -200,7 +297,7 @@ function Auth({ onAuthenticated, notice }) {
           <p className="mt-3 text-center text-sm text-red-600">{error}</p>
         )}
 
-        {isForgot ? (
+        {isCode ? null : isForgot ? (
           <p className="mt-8 text-center text-sm">
             <button type="button" onClick={() => switchTo('login')} className={linkButtonClass}>
               Back to sign in

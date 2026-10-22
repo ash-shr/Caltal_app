@@ -15,6 +15,14 @@ export const API_URL = `${WEBSITE_URL}/api`;
 // Public pages on the website the app links to
 export const PRIVACY_URL = `${WEBSITE_URL}/privacy`;
 
+// The "Web application" OAuth client from Google Cloud, which Caltal's server
+// checks Google's sign-in tokens against. Public by design: Google puts the
+// same ID in every page and app that shows its button. Empty: no Google button.
+// The same ID as the website's (frontend/src/config.js) and the server's
+// (GOOGLE_CLIENT_ID in fly.toml).
+export const GOOGLE_WEB_CLIENT_ID =
+  '840617417263-275r24qrj30ieclkaer6nr9hk5c3ju9a.apps.googleusercontent.com';
+
 // Where people can reach whoever runs Caltal. The same address as the
 // website's (frontend/src/config.js).
 export const CONTACT_EMAIL = 'ash.shr.005@gmail.com';

@@ -136,6 +136,18 @@ public class User {
         emailVerified = true;
     }
 
+    // Signing up again with an address that was never confirmed. Nobody has
+    // proved that account is theirs, so it doesn't block the address: the new
+    // sign-up takes it over, with its own password and name, and whoever made
+    // the first one loses it. Only whoever can read the inbox can then confirm.
+    public void restartSignUp(String newPasswordHash, String newName) {
+        if (emailVerified) {
+            throw new IllegalStateException("A confirmed account can't be signed up for again");
+        }
+        setName(newName);
+        changePassword(newPasswordHash);
+    }
+
     public void setEmail(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email must not be empty");

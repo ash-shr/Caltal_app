@@ -1,0 +1,8 @@
+{
+  "name": "caltal-google",
+  "version": "1.0.0",
+  "description": "Sign in with Google for Caltal on Android, through Android's Credential Manager",
+  "main": "index.js",
+  "private": true,
+  "license": "MIT"
+}

@@ -14,6 +14,11 @@ primary_region = 'lhr'
   # The website's address, used in emailed links. caltal.fly.dev still works,
   # but caltal.app is the one people see.
   APP_URL = 'https://caltal.app'
+  # The "Web application" OAuth client from Google Cloud. Google sign-in
+  # tokens from the website and the phone app are checked against it. Public
+  # by design, like the IDs in frontend/src/config.js and mobile/src/config.js,
+  # which must stay the same as this one.
+  GOOGLE_CLIENT_ID = '840617417263-275r24qrj30ieclkaer6nr9hk5c3ju9a.apps.googleusercontent.com'
 
 [http_service]
   internal_port = 8080

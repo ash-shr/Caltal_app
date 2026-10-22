@@ -24,6 +24,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             "POST /api/auth/login",
             "POST /api/auth/register",
             "POST /api/auth/google",
+            "POST /api/auth/confirm-email",
+            "POST /api/auth/resend-code",
             "POST /api/auth/forgot-password",
             "POST /api/auth/reset-password",
             "PUT /api/me/password",

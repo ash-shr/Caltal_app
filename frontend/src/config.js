@@ -33,6 +33,14 @@ export const MAP_COLOURS = {
 export const SHEET_STOPS = [0.18, 0.5, 0.92];
 export const SHEET_HALF = 1;
 
+// The "Web application" OAuth client from Google Cloud, for the "Sign in with
+// Google" button. Public by design: Google puts it on every page that shows
+// the button. A build can still override it with VITE_GOOGLE_CLIENT_ID.
+// The same ID as the phone app's (mobile/src/config.js) and the server's
+// (GOOGLE_CLIENT_ID in fly.toml).
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  || '840617417263-275r24qrj30ieclkaer6nr9hk5c3ju9a.apps.googleusercontent.com';
+
 // Where people can reach whoever runs Caltal: shown on the privacy policy and
 // the delete-your-account page. Google Play needs a contact address too.
 // Empty until one is chosen, and the pages leave the line out until then.

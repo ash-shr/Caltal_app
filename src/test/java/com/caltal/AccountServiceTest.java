@@ -19,10 +19,11 @@ class AccountServiceTest {
     private final TaskRepository tasks = mock(TaskRepository.class);
     private final SavedPlaceRepository places = mock(SavedPlaceRepository.class);
     private final AccountTokenRepository accountTokens = mock(AccountTokenRepository.class);
+    private final EmailCodeRepository emailCodes = mock(EmailCodeRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
 
-    private final AccountService service = new AccountService(users, tasks, places, accountTokens, encoder, jwt);
+    private final AccountService service = new AccountService(users, tasks, places, accountTokens, emailCodes, encoder, jwt);
 
     private User ash() {
         return new User("ash@example.com", "old-hash", "Ash");
@@ -100,6 +101,7 @@ class AccountServiceTest {
         order.verify(tasks).deleteAllByOwner(user);
         order.verify(places).deleteAllByOwner(user);
         order.verify(accountTokens).deleteAllByUser(user);
+        verify(emailCodes).deleteAllByUser(user);
         order.verify(users).delete(user);
     }
 

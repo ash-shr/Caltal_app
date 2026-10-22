@@ -359,8 +359,8 @@ function PrivacyPage({ signedIn }) {
               'Our database is backed up automatically each day. Backups are deleted after a few days, so after you delete your account, no copy remains once the last backup containing it has been deleted.',
             ],
             [
-              'Records of emailed links (confirmation and password reset)',
-              'Removed after the link expires, once no longer needed to limit how many emails are sent.',
+              'Records of the codes and links we email you (to confirm your address or reset your password)',
+              'Removed after they expire, once no longer needed to limit how many emails are sent. Only scrambled versions are kept, never the codes or links themselves.',
             ],
             [
               'IP addresses used to protect sign-in',

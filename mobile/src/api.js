@@ -81,23 +81,58 @@ async function request(path, options = {}) {
 
 // ---- Signing in and out ----
 
-export async function register(email, password, name) {
-  const result = await request('/auth/register', {
+// Signing up never signs straight in: the answer has confirmEmail set, and
+// the next step is the code emailed to that address (confirmWithCode below).
+export function register(email, password, name) {
+  return request('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, password, name }),
+  });
+}
+
+// The six-digit code from the email, with the same email and password. Signs
+// in.
+export async function confirmWithCode(email, password, code) {
+  const result = await request('/auth/confirm-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, code }),
   });
 
   await storeSession(result);
   return result;
 }
 
+export function resendCode(email, password) {
+  return request('/auth/resend-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+// The ID token Google's account picker hands the app (see src/google.js). The
+// server checks it with Google and replies with a normal Caltal session, the
+// same as for the website's Google button.
+export async function loginWithGoogle(idToken) {
+  const result = await request('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential: idToken }),
+  });
+
+  await storeSession(result);
+  return result;
+}
+
+// For an account whose email isn't confirmed yet, the answer has confirmEmail
+// set instead of a session, and a code is on its way
 export async function login(email, password) {
   const result = await request('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 
-  await storeSession(result);
+  if (result.token) {
+    await storeSession(result);
+  }
   return result;
 }
 

@@ -27,6 +27,7 @@ public class AccountEmailService {
 
     private final UserRepository users;
     private final AccountTokenService tokens;
+    private final EmailCodeService codes;
     private final EmailSender sender;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -37,13 +38,14 @@ public class AccountEmailService {
     public AccountEmailService(
             UserRepository users,
             AccountTokenService tokens,
+            EmailCodeService codes,
             EmailSender sender,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             @Value("${app.url}") String appUrl) {
         // A lightweight (virtual) thread per email: sending waits on the email
         // service, and that wait shouldn't hold up the person's request.
-        this(users, tokens, sender, passwordEncoder, jwtService, appUrl,
+        this(users, tokens, codes, sender, passwordEncoder, jwtService, appUrl,
                 Executors.newVirtualThreadPerTaskExecutor());
     }
 
@@ -51,6 +53,7 @@ public class AccountEmailService {
     AccountEmailService(
             UserRepository users,
             AccountTokenService tokens,
+            EmailCodeService codes,
             EmailSender sender,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
@@ -58,6 +61,7 @@ public class AccountEmailService {
             Executor background) {
         this.users = users;
         this.tokens = tokens;
+        this.codes = codes;
         this.sender = sender;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -115,21 +119,35 @@ public class AccountEmailService {
         return new AuthResponse(jwtService.generateToken(user), user.getName(), user.getEmail());
     }
 
-    // ---- Confirming the email address ---------------------------------------
+    // ---- Confirming the email address with a code ---------------------------
 
-    // Straight after signing up. In the background: a slow or broken email
-    // service must never stop someone creating an account.
-    public void sendConfirmationAfterSignUp(User user) {
+    // After signing up, or signing in to an account that hasn't been confirmed
+    // yet. In the background, so the reply doesn't wait on the email service.
+    // If it fails, the person can ask for another code (sendCodeNow).
+    public void sendCode(User user) {
         background.execute(() -> {
             try {
-                sendConfirmationNow(user);
+                sendCodeNow(user);
+            } catch (TooManyEmailsException tooMany) {
+                log.info("Confirmation code not sent: too many asked for in the last hour");
             } catch (EmailNotSentException notSent) {
-                log.warn("Confirmation email after sign-up not sent: {}", notSent.getMessage());
+                log.warn("Confirmation code not sent: {}", notSent.getMessage());
             } catch (RuntimeException failure) {
-                log.warn("Confirmation email after sign-up failed", failure);
+                log.warn("Confirmation code email failed", failure);
             }
         });
     }
+
+    // "Send a new code". The person is waiting on the answer, so a failure is
+    // reported back to them rather than only logged.
+    public void sendCodeNow(User user) {
+        String code = codes.issue(user);
+        sender.send(AccountEmails.confirmationCode(user.getEmail(), code));
+    }
+
+    // ---- Confirming the email address with a link ---------------------------
+    // Accounts made before codes were sent a link instead. Those links still
+    // work, for someone signed in.
 
     // "Send it again" from Settings. Here the person is waiting on the answer,
     // so a failure is reported back to them rather than only logged.

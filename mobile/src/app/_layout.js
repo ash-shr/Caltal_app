@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Splash from '../components/Splash';
 import { startErrorReporting, withErrorReporting } from '../errorReporting';
@@ -26,13 +27,18 @@ function RootLayout() {
   return (
     // Needed by anything that uses gestures — the bottom sheet, mainly.
     <GestureHandlerRootView style={styles.fill}>
-      <SafeAreaProvider>
-        <SettingsProvider>
-          <SessionProvider>
-            <RootNavigator />
-          </SessionProvider>
-        </SettingsProvider>
-      </SafeAreaProvider>
+      {/* Tracks the keyboard, so forms can keep the box being typed in above
+          it. Android no longer shrinks the screen for the keyboard by itself
+          now that apps draw edge to edge. */}
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <SettingsProvider>
+            <SessionProvider>
+              <RootNavigator />
+            </SessionProvider>
+          </SettingsProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

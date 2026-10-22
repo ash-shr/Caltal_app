@@ -25,6 +25,7 @@ public class AuthController {
         this.accountEmails = accountEmails;
     }
 
+    // Answers "enter the code we've emailed" (confirmEmail true), not a session
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@RequestBody RegisterRequest request) {
@@ -37,6 +38,19 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@RequestBody LoginRequest request) {
         return authService.login(request.getEmail(), request.getPassword());
+    }
+
+    // The six-digit code from the email, with the account's email and
+    // password. Signs the person in.
+    @PostMapping("/confirm-email")
+    public AuthResponse confirmEmail(@RequestBody ConfirmEmailRequest request) {
+        return authService.confirmEmail(request.email(), request.password(), request.code());
+    }
+
+    @PostMapping("/resend-code")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resendCode(@RequestBody ResendCodeRequest request) {
+        authService.resendCode(request.email(), request.password());
     }
 
     @PostMapping("/google")
@@ -78,6 +92,18 @@ public class AuthController {
         return exception.getMessage();
     }
 
+    @ExceptionHandler(TooManyEmailsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public String handleTooManyEmails(TooManyEmailsException exception) {
+        return exception.getMessage();
+    }
+
+    @ExceptionHandler(EmailNotSentException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public String handleEmailNotSent(EmailNotSentException exception) {
+        return "The email couldn't be sent just now. Please try again in a few minutes.";
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public String handleBadCredentials(BadCredentialsException exception) {
@@ -85,6 +111,12 @@ public class AuthController {
     }
 
     public record ForgotPasswordRequest(String email) {
+    }
+
+    public record ConfirmEmailRequest(String email, String password, String code) {
+    }
+
+    public record ResendCodeRequest(String email, String password) {
     }
 
     public record ResetPasswordRequest(String token, String password) {

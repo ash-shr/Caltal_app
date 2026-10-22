@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,9 +25,16 @@ class AuthServiceTest {
     private final JwtService jwt = mock(JwtService.class);
     private final GoogleTokenVerifier google = mock(GoogleTokenVerifier.class);
     private final AccountEmailService accountEmails = mock(AccountEmailService.class);
+    private final EmailCodeService codes = mock(EmailCodeService.class);
 
     private AuthService service() {
-        return new AuthService(users, encoder, jwt, google, accountEmails);
+        return new AuthService(users, encoder, jwt, google, accountEmails, codes);
+    }
+
+    private User confirmed(String email) {
+        User user = new User(email, "hash", "Ash");
+        user.markEmailVerified();
+        return user;
     }
 
     private void googleSays(String token, String subject, String email, String name) {
@@ -77,35 +85,43 @@ class AuthServiceTest {
     }
 
     @Test
-    void rejectsAnEmailThatAlreadyHasAnAccount() {
-        when(users.existsByEmail("ash@example.com")).thenReturn(true);
+    void rejectsAnEmailThatAlreadyHasAConfirmedAccount() {
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(confirmed("ash@example.com")));
 
         assertThrows(IllegalArgumentException.class,
                 () -> service().register("ash@example.com", "longenough1", "Ash"));
+        verify(accountEmails, never()).sendCode(any(User.class));
     }
 
     @Test
-    void registersANewAccountAndReturnsAToken() {
+    void signingUpAsksForTheEmailedCodeInsteadOfSigningIn() {
         when(encoder.encode("longenough1")).thenReturn("hashed");
-        when(jwt.generateToken(any(User.class))).thenReturn("a-token");
 
         AuthResponse response = service().register("  Ash@Example.com ", "longenough1", "Ash");
 
-        assertEquals("a-token", response.getToken());
+        assertTrue(response.isConfirmEmail());
+        assertEquals(null, response.getToken());
         assertEquals("ash@example.com", response.getEmail());
-        verify(users).save(any(User.class));
+        verify(jwt, never()).generateToken(any(User.class));
+
+        ArgumentCaptor<User> created = ArgumentCaptor.forClass(User.class);
+        verify(users).save(created.capture());
+        verify(accountEmails).sendCode(created.getValue());
+        assertFalse(created.getValue().isEmailVerified());
     }
 
     @Test
-    void signingUpSendsAConfirmationEmail() {
-        when(encoder.encode("longenough1")).thenReturn("hashed");
+    void signingUpAgainTakesOverAnAccountThatWasNeverConfirmed() {
+        User squatter = new User("ash@example.com", "their-hash", "Not Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(squatter));
+        when(encoder.encode("longenough1")).thenReturn("my-hash");
 
-        service().register("ash@example.com", "longenough1", "Ash");
+        AuthResponse response = service().register("ash@example.com", "longenough1", "Ash");
 
-        ArgumentCaptor<User> created = ArgumentCaptor.forClass(User.class);
-        verify(accountEmails).sendConfirmationAfterSignUp(created.capture());
-        assertEquals("ash@example.com", created.getValue().getEmail());
-        assertFalse(created.getValue().isEmailVerified());
+        assertTrue(response.isConfirmEmail());
+        assertEquals("my-hash", squatter.getPasswordHash());
+        assertEquals("Ash", squatter.getName());
+        verify(accountEmails).sendCode(squatter);
     }
 
     @Test
@@ -113,7 +129,88 @@ class AuthServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> service().register("ash@example.com", "short", "Ash"));
 
-        verify(accountEmails, never()).sendConfirmationAfterSignUp(any(User.class));
+        verify(accountEmails, never()).sendCode(any(User.class));
+    }
+
+    @Test
+    void signingInToAnUnconfirmedAccountSendsACodeInsteadOfASession() {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("longenough1", "hash")).thenReturn(true);
+
+        AuthResponse response = service().login("ash@example.com", "longenough1");
+
+        assertTrue(response.isConfirmEmail());
+        assertEquals(null, response.getToken());
+        verify(accountEmails).sendCode(ash);
+        verify(jwt, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void signingInToAConfirmedAccountGivesASession() {
+        User ash = confirmed("ash@example.com");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("longenough1", "hash")).thenReturn(true);
+        when(jwt.generateToken(ash)).thenReturn("a-token");
+
+        AuthResponse response = service().login("ash@example.com", "longenough1");
+
+        assertEquals("a-token", response.getToken());
+        assertFalse(response.isConfirmEmail());
+        verify(accountEmails, never()).sendCode(any(User.class));
+    }
+
+    @Test
+    void theRightCodeConfirmsTheEmailAndSignsIn() {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("longenough1", "hash")).thenReturn(true);
+        when(jwt.generateToken(ash)).thenReturn("a-token");
+
+        AuthResponse response = service().confirmEmail("ash@example.com", "longenough1", "482913");
+
+        verify(codes).use(ash, "482913");
+        assertTrue(ash.isEmailVerified());
+        assertEquals("a-token", response.getToken());
+    }
+
+    @Test
+    void aWrongCodeLeavesTheEmailUnconfirmed() {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("longenough1", "hash")).thenReturn(true);
+        doThrow(new IllegalArgumentException(EmailCodeService.WRONG)).when(codes).use(ash, "000000");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service().confirmEmail("ash@example.com", "longenough1", "000000"));
+        assertFalse(ash.isEmailVerified());
+        verify(jwt, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void theCodeAloneIsntEnoughWithoutThePassword() {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("not-mine-123", "hash")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class,
+                () -> service().confirmEmail("ash@example.com", "not-mine-123", "482913"));
+        verify(codes, never()).use(any(User.class), anyString());
+        assertFalse(ash.isEmailVerified());
+    }
+
+    @Test
+    void aNewCodeIsSentOnlyForTheRightPasswordAndAnUnconfirmedEmail() {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));
+        when(encoder.matches("longenough1", "hash")).thenReturn(true);
+
+        service().resendCode("ash@example.com", "longenough1");
+        verify(accountEmails).sendCodeNow(ash);
+
+        ash.markEmailVerified();
+        assertThrows(IllegalArgumentException.class,
+                () -> service().resendCode("ash@example.com", "longenough1"));
     }
 
     @Test

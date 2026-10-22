@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
 import { usePlaces } from '../../places';
@@ -110,8 +111,10 @@ export default function SavedPlaces() {
   const { places, error, refresh } = usePlaces();
 
   return (
-    <ScrollView
+    // Keeps the rename box above the keyboard
+    <KeyboardAwareScrollView
       contentContainerStyle={styles.content}
+      bottomOffset={24}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
     >
@@ -138,7 +141,7 @@ export default function SavedPlaces() {
           ))}
         </>
       )}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

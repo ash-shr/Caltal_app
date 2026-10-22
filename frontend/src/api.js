@@ -58,14 +58,32 @@ async function request(url, options = {}) {
   return response.json();
 }
 
+// Signing up never signs straight in: the answer has confirmEmail set, and
+// the next step is the code emailed to that address (confirmWithCode below).
 export async function register(email, password, name) {
-  const result = await request(`${BASE_URL}/auth/register`, {
+  return request(`${BASE_URL}/auth/register`, {
     method: 'POST',
     body: JSON.stringify({ email, password, name }),
+  });
+}
+
+// The six-digit code from the email, with the same email and password. Signs
+// this browser in.
+export async function confirmWithCode(email, password, code) {
+  const result = await request(`${BASE_URL}/auth/confirm-email`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password, code }),
   });
 
   storeSession(result);
   return result;
+}
+
+export function resendCode(email, password) {
+  return request(`${BASE_URL}/auth/resend-code`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
 }
 
 // `credential` is the ID token Google's button hands us. The server checks it
@@ -80,13 +98,17 @@ export async function loginWithGoogle(credential) {
   return result;
 }
 
+// For an account whose email isn't confirmed yet, the answer has confirmEmail
+// set instead of a session, and a code is on its way
 export async function login(email, password) {
   const result = await request(`${BASE_URL}/auth/login`, {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 
-  storeSession(result);
+  if (result.token) {
+    storeSession(result);
+  }
   return result;
 }
 

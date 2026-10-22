@@ -29,6 +29,7 @@ class AccountEmailServiceTest {
 
     private final UserRepository users = mock(UserRepository.class);
     private final AccountTokenService tokens = mock(AccountTokenService.class);
+    private final EmailCodeService codes = mock(EmailCodeService.class);
     private final EmailSender sender = mock(EmailSender.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
@@ -40,7 +41,7 @@ class AccountEmailServiceTest {
 
     private AccountEmailService service(Executor background) {
         return new AccountEmailService(
-                users, tokens, sender, encoder, jwt, "https://caltal.fly.dev/", background);
+                users, tokens, codes, sender, encoder, jwt, "https://caltal.fly.dev/", background);
     }
 
     // Saved users have ids; ones made in a test don't, so give them one
@@ -155,24 +156,44 @@ class AccountEmailServiceTest {
     // ---- Confirming the email address ---------------------------------------
 
     @Test
-    void signingUpEmailsAConfirmationLink() {
+    void emailsTheCodeWithItInTheSubjectToo() {
         User ash = user(1, "ash@example.com");
-        when(tokens.issue(ash, TokenPurpose.VERIFY_EMAIL)).thenReturn("s3cret");
+        when(codes.issue(ash)).thenReturn("482913");
 
-        service().sendConfirmationAfterSignUp(ash);
+        service().sendCode(ash);
 
         EmailSender.Email email = sentEmail();
         assertEquals("ash@example.com", email.to());
-        assertTrue(email.text().contains("https://caltal.fly.dev/verify-email#token=s3cret"));
+        assertEquals("482913 is your Caltal code", email.subject());
+        assertTrue(email.text().contains("482913"));
+        assertTrue(email.html().contains("482913"));
     }
 
     @Test
     void aBrokenEmailServiceNeverStopsASignUp() {
         User ash = user(1, "ash@example.com");
-        when(tokens.issue(ash, TokenPurpose.VERIFY_EMAIL)).thenReturn("s3cret");
+        when(codes.issue(ash)).thenReturn("482913");
         doThrow(new EmailNotSentException("down")).when(sender).send(any());
 
-        assertDoesNotThrow(() -> service().sendConfirmationAfterSignUp(ash));
+        assertDoesNotThrow(() -> service().sendCode(ash));
+    }
+
+    @Test
+    void tooManyCodesInTheBackgroundIsOnlyLogged() {
+        User ash = user(1, "ash@example.com");
+        when(codes.issue(ash)).thenThrow(new TooManyEmailsException());
+
+        assertDoesNotThrow(() -> service().sendCode(ash));
+        verify(sender, never()).send(any());
+    }
+
+    @Test
+    void askingForANewCodeReportsAProblemToThePersonWaiting() {
+        User ash = user(1, "ash@example.com");
+        when(codes.issue(ash)).thenReturn("482913");
+        doThrow(new EmailNotSentException("down")).when(sender).send(any());
+
+        assertThrows(EmailNotSentException.class, () -> service().sendCodeNow(ash));
     }
 
     @Test

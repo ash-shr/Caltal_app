@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
-
-// Public by design: Google puts this on every page that shows its button.
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+import { GOOGLE_CLIENT_ID as CLIENT_ID } from './config';
 
 const SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 

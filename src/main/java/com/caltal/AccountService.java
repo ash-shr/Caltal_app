@@ -14,6 +14,7 @@ public class AccountService {
     private final TaskRepository tasks;
     private final SavedPlaceRepository places;
     private final AccountTokenRepository accountTokens;
+    private final EmailCodeRepository emailCodes;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -22,12 +23,14 @@ public class AccountService {
             TaskRepository tasks,
             SavedPlaceRepository places,
             AccountTokenRepository accountTokens,
+            EmailCodeRepository emailCodes,
             PasswordEncoder passwordEncoder,
             JwtService jwtService) {
         this.users = users;
         this.tasks = tasks;
         this.places = places;
         this.accountTokens = accountTokens;
+        this.emailCodes = emailCodes;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -54,7 +57,7 @@ public class AccountService {
         return new AuthResponse(jwtService.generateToken(user), user.getName(), user.getEmail());
     }
 
-    // Tasks, saved places and emailed links first, then the user: each points at
+    // Tasks, saved places, emailed links and codes first, then the user: each points at
     // its owner, so the database refuses to remove a user who still owns
     // anything. @Transactional makes the steps one — if a later one fails, the earlier
     // deletions are undone.
@@ -67,6 +70,7 @@ public class AccountService {
         tasks.deleteAllByOwner(user);
         places.deleteAllByOwner(user);
         accountTokens.deleteAllByUser(user);
+        emailCodes.deleteAllByUser(user);
         users.delete(user);
     }
 

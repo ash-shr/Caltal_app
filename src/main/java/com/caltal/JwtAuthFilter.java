@@ -46,6 +46,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 users.findByEmail(claims.email())
                         .filter(user -> Objects.equals(user.getId(), claims.userId()))
                         .filter(user -> user.getTokenVersion() == claims.version())
+                        // Only confirmed accounts can be used. Sessions from
+                        // before confirming was required end here, and the
+                        // person is asked for a code when they sign in again.
+                        .filter(User::isEmailVerified)
                         .ifPresent(user -> SecurityContextHolder.getContext().setAuthentication(
                                 new UsernamePasswordAuthenticationToken(
                                         user.getEmail(), null, List.of())));
