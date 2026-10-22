@@ -4,23 +4,43 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TaskService {
 
-    private final TaskRepository repository;
+    // Far more than anyone keeps by hand (a task a day for over ten years), so
+    // it only stops a script filling the database, or the task list growing
+    // too big for a phone to load. Finished tasks count, so the message says
+    // what to do about it.
+    static final int MAX_TASKS_PER_ACCOUNT = 5_000;
 
+    private final TaskRepository repository;
+    private final int maxTasks;
+
+    @Autowired
     public TaskService(TaskRepository repository) {
+        this(repository, MAX_TASKS_PER_ACCOUNT);
+    }
+
+    // Lets tests use a small limit
+    TaskService(TaskRepository repository, int maxTasks) {
         if (repository == null) {
             throw new IllegalArgumentException("Repository must not be null");
         }
         this.repository = repository;
+        this.maxTasks = maxTasks;
     }
 
     public void addTask(Task task) {
         if (task == null) {
             throw new IllegalArgumentException("Task must not be null");
+        }
+        if (repository.countByOwner(task.getOwner()) >= maxTasks) {
+            throw new IllegalArgumentException(String.format(
+                    "You've reached the limit of %,d tasks. Delete some finished ones to add more.",
+                    maxTasks));
         }
         repository.save(task);
     }

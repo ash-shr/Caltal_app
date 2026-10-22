@@ -20,4 +20,7 @@ public interface TaskRepository {
 
     // How many of this person's tasks have a voice note (for the per-account cap)
     long countWithVoiceNotes(User owner);
+
+    // How many tasks this person has, finished ones included (for the cap on tasks)
+    long countByOwner(User owner);
 }

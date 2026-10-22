@@ -5,8 +5,9 @@ import { navigate } from './router';
 // The privacy policy. Google Play needs one at a public web address, linked
 // from the app and the store listing. Keep it true: if Caltal starts
 // collecting something new or using a new service, it goes here first, and
-// the date changes.
-const UPDATED = '21 October 2026';
+// the date changes. Written to cover UK data protection law (UK GDPR and the
+// Data Protection Act 2018), but not reviewed by a lawyer.
+const UPDATED = '22 October 2026';
 
 // Word for word the notice the phone app shows before asking for background
 // location (mobile/src/placeReminders.js). Google wants the same words in the
@@ -16,6 +17,8 @@ const LOCATION_NOTICE =
   'not in use. It compares where you are with the places you pin tasks to, and reminds you ' +
   'when you arrive near one. Your location stays on your phone: it is not sent to ' +
   'Caltal’s server.';
+
+const EMAIL = CONTACT_EMAIL || 'the address on the Caltal website';
 
 function Heading({ children }) {
   return <h2 className="font-semibold text-stone-800">{children}</h2>;
@@ -29,14 +32,81 @@ function List({ items }) {
   return (
     <ul className="list-disc space-y-1.5 pl-5 text-[15px] leading-relaxed text-stone-600">
       {items.map(item => (
-        <li key={item}>{item}</li>
+        <li key={typeof item === 'string' ? item : item.key}>{item}</li>
       ))}
     </ul>
   );
 }
 
-// "by emailing …" when a contact address is set, otherwise nothing
-const byEmail = CONTACT_EMAIL ? ` by emailing ${CONTACT_EMAIL}` : '';
+// A table on wider screens. On a phone, where three columns would be cramped,
+// each row becomes a small card instead: its first cell as the title, and the
+// other cells under their column names.
+function Table({ head, rows }) {
+  return (
+    <>
+      <div className="space-y-3 sm:hidden">
+        {rows.map(row => (
+          <div key={row[0]} className="rounded-xl bg-white p-4 ring-1 ring-stone-200">
+            <p className="text-[15px] font-semibold text-stone-800">{row[0]}</p>
+            {row.slice(1).map((cell, index) => (
+              <div key={head[index + 1]} className="mt-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
+                  {head[index + 1]}
+                </p>
+                <p className="text-[14px] leading-snug text-stone-600">{cell}</p>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <WideTable head={head} rows={rows} />
+    </>
+  );
+}
+
+function WideTable({ head, rows }) {
+  return (
+    <div className="hidden sm:block">
+      <table className="w-full border-collapse text-left text-[14px] leading-snug">
+        <thead>
+          <tr>
+            {head.map(cell => (
+              <th
+                key={cell}
+                className="border-b border-stone-300 py-2 pr-4 align-bottom font-semibold text-stone-800"
+              >
+                {cell}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={row[0]}>
+              {row.map((cell, index) => (
+                <td
+                  key={index}
+                  className="border-b border-stone-200 py-2.5 pr-4 align-top text-stone-600"
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <section className="space-y-3">
+      <Heading>{title}</Heading>
+      {children}
+    </section>
+  );
+}
 
 function PrivacyPage({ signedIn }) {
   return (
@@ -44,20 +114,40 @@ function PrivacyPage({ signedIn }) {
       <p className="-mt-6 text-sm text-stone-400">Last updated {UPDATED}</p>
 
       <Paragraph>
-        This policy explains what personal data Caltal collects, why it is collected, who it is
-        shared with, how long it is kept, and the rights you have over it. It applies to the
-        Caltal website (caltal.app) and the Caltal phone app.
+        This privacy policy explains how Caltal (“Caltal”, “we”, “us” or “our”) collects, uses,
+        shares and protects personal data when you use the Caltal mobile app and the Caltal
+        website at caltal.app (together, the “Service”). It also explains the rights you have
+        and how to use them. Please read it together with our{' '}
+        <button
+          type="button"
+          onClick={() => navigate('/terms')}
+          className="font-medium text-caltal hover:underline"
+        >
+          terms of use
+        </button>
+        .
       </Paragraph>
 
-      <section className="space-y-2">
-        <Heading>1. Who we are</Heading>
-        <Paragraph>
-          Caltal is provided by Ashutosh Sharma, a developer based in the United Kingdom (“we”,
-          “us”). We are the data controller for the personal data described in this policy, which
-          means we decide how and why it is used.
-          {CONTACT_EMAIL ? ` You can contact us at ${CONTACT_EMAIL}.` : ''}
-        </Paragraph>
+      <section className="space-y-2 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
+        <Heading>Privacy at a glance</Heading>
+        <List
+          items={[
+            'We collect only what the Service needs: your account, your tasks, the places you save and any voice notes you record.',
+            'Your live location is used on your phone to trigger place reminders. It is not sent to our server.',
+            'We do not show adverts, use analytics or tracking tools, or sell your data.',
+            'You can delete your account, and everything in it, at any time.',
+          ]}
+        />
       </section>
+
+      <Section title="1. Who we are">
+        <Paragraph>
+          The Service is provided by Ashutosh Sharma, a developer based in the United Kingdom.
+          For the purposes of the UK General Data Protection Regulation (UK GDPR) and the Data
+          Protection Act 2018, we are the controller of the personal data described in this
+          policy. You can contact us about this policy or your data at {EMAIL}.
+        </Paragraph>
+      </Section>
 
       <section className="space-y-2 rounded-2xl bg-caltal-soft p-5">
         <Heading>Location in the background</Heading>
@@ -69,132 +159,229 @@ function PrivacyPage({ signedIn }) {
         </Paragraph>
       </section>
 
-      <section className="space-y-2">
-        <Heading>2. The data we collect</Heading>
-        <List
-          items={[
-            'Account details: your name, your email address, and whether you have confirmed it.',
-            'Your password, stored only as a one-way BCrypt hash. We never store your password itself and cannot read it.',
-            'If you choose to sign in with Google: your Google account ID, name and email address, as shared by Google.',
-            'Tasks: their names, dates and reminder times and, for tasks with a place, its position on the map and the reminder distance.',
-            'Voice notes you record on a task in the phone app, up to two minutes each.',
-            'Saved places, such as Home or Work: their names, their positions and, if they came from a search, their addresses.',
-            'Records of the confirmation and password reset emails sent to you, used to limit how many can be sent.',
-            'Technical data: the IP address your device connects from, which our hosting provider and the services listed below necessarily receive, and which our server uses temporarily to protect sign-in from repeated attempts.',
+      <Section title="2. Personal data we collect">
+        <Table
+          head={['Category', 'What it includes', 'Where it comes from']}
+          rows={[
+            [
+              'Account details',
+              'Your name, email address and whether you have confirmed it. Your password, stored only as a one-way BCrypt hash, never in readable form.',
+              'You, when you register',
+            ],
+            [
+              'Google sign-in details',
+              'Your Google account identifier, name and email address.',
+              'Google, only if you choose to sign in with Google',
+            ],
+            [
+              'Tasks',
+              'Task names, dates, reminder times, whether each task is done and, for tasks with a place, its position on the map and the reminder distance.',
+              'You',
+            ],
+            [
+              'Saved places',
+              'The names you give places (such as Home or Work), their positions and, if they came from a search, their addresses.',
+              'You',
+            ],
+            [
+              'Voice notes',
+              'Audio recordings of up to two minutes that you attach to tasks in the phone app.',
+              'You',
+            ],
+            [
+              'Location',
+              'Your device’s location. In the phone app it is processed on your device and not received by us. On the website, it is sent to us only when you use “Watch for tasks around me”.',
+              'Your device, with your permission',
+            ],
+            [
+              'Place searches',
+              'The text you type into the place search, and the area of the map you are viewing.',
+              'You',
+            ],
+            [
+              'Technical data',
+              'Your IP address and basic technical information sent with every internet request, such as the app version.',
+              'Your device, automatically',
+            ],
+            ['Messages', 'Anything you write when you contact us.', 'You'],
           ]}
         />
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>3. How we use your data, and our lawful basis</Heading>
+      <Section title="3. How we use your data, and our lawful bases">
         <Paragraph>
-          We use your data only to provide Caltal to you: to run your account, store and show your
-          tasks, saved places and voice notes, remind you at the times and places you choose, and
-          send the emails you need to confirm your address or reset your password. UK data
-          protection law calls this processing that is necessary for a contract with you.
+          UK data protection law requires a lawful basis for each use of personal data. Ours are:
         </Paragraph>
+        <Table
+          head={['Purpose', 'Data used', 'Lawful basis']}
+          rows={[
+            [
+              'Providing the Service: your account, storing and showing your tasks, saved places and voice notes, and keeping the app and website in step',
+              'Account details, tasks, saved places, voice notes',
+              'Performance of our contract with you',
+            ],
+            [
+              'Reminding you at the times and places you choose',
+              'Tasks, location (on your device)',
+              'Performance of our contract with you',
+            ],
+            [
+              'Showing maps and finding places you search for',
+              'Place searches, map area',
+              'Performance of our contract with you',
+            ],
+            [
+              'Sending the emails your account needs, such as confirming your address and resetting your password',
+              'Name, email address',
+              'Performance of our contract with you',
+            ],
+            [
+              'Keeping the Service secure, for example limiting repeated sign-in attempts',
+              'IP address, account details',
+              'Our legitimate interest in protecting the Service and your account',
+            ],
+            [
+              'Answering your questions and requests',
+              'Messages, account details',
+              'Our legitimate interest in helping you, or our legal obligations',
+            ],
+            [
+              'Meeting our legal obligations',
+              'Any of the above, where required',
+              'Legal obligation',
+            ],
+          ]}
+        />
         <Paragraph>
-          We also process technical data such as IP addresses to keep Caltal secure, for example
-          to stop passwords being guessed. This is in our legitimate interest in protecting the
-          service and your account.
+          We do not use your data for advertising or profiling, we do not sell it, and we do not
+          make decisions about you by automated means that have legal or similarly significant
+          effects.
         </Paragraph>
-        <Paragraph>
-          We do not use your data for advertising, we do not sell it, and we do not make automated
-          decisions about you that have legal or similarly significant effects.
-        </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>4. Location</Heading>
+      <Section title="4. Location">
         <List
           items={[
-            'Phone app: your location is used to show where you are on the map and to remind you when you are near a task’s place. This is worked out on your phone, as described above, and your location is not sent to our server.',
+            'Phone app: your location is used to show where you are on the map and, if you turn on place reminders, to remind you when you are near a task’s place. Your phone compares its own location with your tasks’ places. Your location is not sent to our server.',
             'Website: if you choose “Watch for tasks around me”, the website sends your current position to our server to find the tasks you are near. It is used to answer that request and is not stored.',
+            'The places you pin tasks to and the places you save are stored on our server, because they are part of your tasks.',
           ]}
         />
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>5. Microphone and voice notes</Heading>
+      <Section title="5. Microphone and voice notes">
         <Paragraph>
           The phone app uses your microphone only while you are recording a voice note, after you
           tap to record and grant the permission. Nothing is recorded at any other time. A voice
           note is stored with its task, can be played only from your account, and is deleted when
           you remove it or delete the task.
         </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>6. Who we share data with</Heading>
+      <Section title="6. Who we share your data with">
         <Paragraph>
-          We share personal data only with the service providers that help us run Caltal, and only
-          as far as each one needs it:
+          We share personal data only with the service providers below, who process it on our
+          behalf and under our instructions, and only as far as each one needs it to provide its
+          service:
         </Paragraph>
-        <List
-          items={[
-            'Fly.io: hosts the website, the server and the database that holds your account, tasks, voice notes and saved places. Your data is stored in its London region.',
-            'MapTiler: provides the map and the place search, so it receives the area of the map you view and what you type into the search box.',
-            'Resend: delivers Caltal’s emails, so it receives your email address and the content of those emails.',
-            'Google: only if you choose to sign in with Google.',
-            'Expo: delivers updates to the phone app, so it receives technical details such as the app version and your device’s operating system.',
+        <Table
+          head={['Provider', 'What it does for Caltal', 'Where']}
+          rows={[
+            [
+              'Fly.io',
+              'Hosts the website, the server and the database that holds your account, tasks, saved places and voice notes.',
+              'Data stored in London, UK. Fly.io is a US company.',
+            ],
+            [
+              'MapTiler',
+              'Provides the maps and the place search. It receives the map area you view and what you type into the search.',
+              'Switzerland',
+            ],
+            [
+              'Resend',
+              'Delivers Caltal’s emails. It receives your email address and the content of those emails.',
+              'Sending from Ireland. Resend is a US company.',
+            ],
+            [
+              'Google',
+              'Verifies your identity if you choose to sign in with Google.',
+              'United States',
+            ],
+            [
+              'Expo',
+              'Delivers updates to the phone app. It receives technical details such as the app version and your phone’s operating system.',
+              'United States',
+            ],
           ]}
         />
         <Paragraph>
-          We may also disclose data where the law requires it. We do not sell your data or share it
-          with advertisers.
+          We may also disclose personal data where we are required to by law, to protect the
+          rights, safety or property of our users or others, or as part of a transfer of the
+          Service to a new owner, who would be bound by this policy. We do not sell your data or
+          share it with advertisers.
         </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>7. International transfers</Heading>
+      <Section title="7. International transfers">
         <Paragraph>
-          Some of these providers are based in, or may process data in, countries outside the UK,
-          including the United States. Where that happens, the transfer is protected by safeguards
-          recognised under UK data protection law, such as adequacy regulations or the standard
-          data protection clauses in the provider’s data processing terms.
+          Some of our providers are based in, or may process data in, countries outside the UK,
+          including the United States. Where personal data is transferred outside the UK, we rely
+          on safeguards recognised by UK data protection law, such as adequacy regulations or the
+          standard data protection clauses in each provider’s data processing terms.
         </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>8. How long we keep your data</Heading>
-        <List
-          items={[
-            'Your account, tasks, voice notes and saved places are kept until you delete them or your account.',
-            'When you delete your account, everything in it is removed from our database straight away. The database’s automatic backups are replaced over the following few days, after which no copy remains.',
-            'Records of the links we email you are removed after the links expire, once they are no longer needed to limit how many emails are sent.',
-            'IP addresses used to protect sign-in are held only temporarily in the server’s memory and are never written to the database.',
+      <Section title="8. How long we keep your data">
+        <Table
+          head={['Data', 'How long we keep it']}
+          rows={[
+            [
+              'Account details, tasks, saved places and voice notes',
+              'Until you delete them, or until you delete your account.',
+            ],
+            [
+              'Data in database backups',
+              'Our database is backed up automatically each day. Backups are deleted after a few days, so after you delete your account, no copy remains once the last backup containing it has been deleted.',
+            ],
+            [
+              'Records of emailed links (confirmation and password reset)',
+              'Removed after the link expires, once no longer needed to limit how many emails are sent.',
+            ],
+            [
+              'IP addresses used to protect sign-in',
+              'Held only briefly in the server’s memory, and never written to the database.',
+            ],
+            ['Messages you send us', 'As long as needed to deal with them.'],
           ]}
         />
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>9. How we protect your data</Heading>
+      <Section title="9. How we protect your data">
         <Paragraph>
-          All connections to Caltal are encrypted (HTTPS). Passwords are stored only as hashes.
-          Your tasks, saved places and voice notes can be reached only by signing in to your
-          account. On your phone, your sign-in is kept in the phone’s secure storage. No method of
-          storing or sending data is completely secure, but we take reasonable steps to protect
-          yours.
+          All connections to the Service are encrypted (HTTPS), and our database is encrypted at
+          rest. Passwords are stored only as hashes. Your tasks, saved places and voice notes can
+          only be reached by signing in to your account, and requests are limited to stop them
+          being guessed or misused. On your phone, your sign-in is kept in the phone’s secure
+          storage. No method of storing or transmitting data is completely secure, but we take
+          appropriate technical and organisational measures to protect yours.
         </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>10. Storage on your device</Heading>
+      <Section title="10. Your rights">
+        <Paragraph>Under UK data protection law you have the right to:</Paragraph>
+        <List
+          items={[
+            'access the personal data we hold about you and receive a copy of it;',
+            'have inaccurate data corrected;',
+            'have your data deleted;',
+            'restrict how we use your data, or object to our use of it where we rely on legitimate interests;',
+            'receive the data you gave us in a commonly used, machine-readable format, and have it sent to another provider (data portability);',
+            'withdraw a permission you have given, such as location or microphone access, at any time in your phone’s settings.',
+          ]}
+        />
         <Paragraph>
-          The website keeps your sign-in and your default reminder distance in your browser’s
-          local storage. The phone app keeps your sign-in in secure storage, and its settings and
-          the list of places it is watching on the phone. Caltal does not use cookies, advertising
-          identifiers, analytics or tracking tools.
-        </Paragraph>
-      </section>
-
-      <section className="space-y-2">
-        <Heading>11. Your rights</Heading>
-        <Paragraph>
-          Under UK data protection law you have the right to access the personal data we hold about
-          you, to have it corrected, to have it deleted, to restrict or object to how it is used,
-          and to receive a copy of it in a portable format. You can change your name and password
-          in Settings, and delete your account and everything in it at any time:{' '}
+          You can change your name and password in Settings, and delete your account and
+          everything in it at any time (
           <button
             type="button"
             onClick={() => navigate('/delete-account')}
@@ -202,41 +389,63 @@ function PrivacyPage({ signedIn }) {
           >
             how to delete your account
           </button>
-          . To exercise any other right, contact us{byEmail}. We will respond within one month.
+          ). To use any other right, email {EMAIL}. We will reply within one month, and may need to
+          confirm it is your account before acting on the request.
         </Paragraph>
-        <Paragraph>
-          If you are unhappy with how your data is handled, please contact us first. You also have
-          the right to complain to the Information Commissioner’s Office (ico.org.uk), the UK’s
-          data protection regulator.
-        </Paragraph>
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>12. Children</Heading>
-        <Paragraph>
-          Caltal is not intended for children under 13, and we do not knowingly collect personal
-          data from them. If you believe a child under 13 has created an account, contact us
-          {byEmail} and we will delete it.
-        </Paragraph>
-      </section>
+      <Section title="11. Your choices">
+        <List
+          items={[
+            'Location, microphone and notifications are each controlled by a permission on your phone, which you can turn off at any time. Caltal keeps working without them; only the features that need them stop.',
+            'Place reminders and time reminders can each be turned off in Caltal’s Settings.',
+            'You can remove a voice note, a saved place or a task at any time.',
+          ]}
+        />
+      </Section>
 
-      <section className="space-y-2">
-        <Heading>13. Changes to this policy</Heading>
+      <Section title="12. Cookies and storage on your device">
+        <Paragraph>
+          Caltal does not use cookies, advertising identifiers, analytics or tracking tools. The
+          website keeps your sign-in and your default reminder distance in your browser’s local
+          storage, so you stay signed in. The phone app keeps your sign-in in the phone’s secure
+          storage, and its settings and the list of places it is watching on the phone. This is
+          strictly necessary for the Service to work, and none of it is used to track you.
+        </Paragraph>
+      </Section>
+
+      <Section title="13. Children">
+        <Paragraph>
+          The Service is not intended for children under 13, and we do not knowingly collect
+          personal data from them. If you believe a child under 13 has created an account, please
+          contact us at {EMAIL} and we will delete it.
+        </Paragraph>
+      </Section>
+
+      <Section title="14. Other websites and services">
+        <Paragraph>
+          The Service links to, and uses, services run by others, such as Google sign-in and the
+          map credits for MapTiler and OpenStreetMap. Their own privacy policies apply to what
+          they do with your data.
+        </Paragraph>
+      </Section>
+
+      <Section title="15. Changes to this policy">
         <Paragraph>
           We may update this policy from time to time. The date at the top shows when it last
-          changed. If we make a significant change, we will let you know in Caltal before it takes
-          effect.
+          changed. If we make a significant change, we will let you know in the Service before it
+          takes effect.
         </Paragraph>
-      </section>
+      </Section>
 
-      {CONTACT_EMAIL && (
-        <section className="space-y-2">
-          <Heading>14. Contact</Heading>
-          <Paragraph>
-            Questions about this policy or your data can be sent to {CONTACT_EMAIL}.
-          </Paragraph>
-        </section>
-      )}
+      <Section title="16. Contact and complaints">
+        <Paragraph>
+          Questions about this policy or your personal data can be sent to {EMAIL}. If you are
+          unhappy with how we have handled your data, please contact us first so we can try to put
+          it right. You also have the right to complain to the Information Commissioner’s Office,
+          the UK’s data protection regulator, at ico.org.uk or on 0303 123 1113.
+        </Paragraph>
+      </Section>
     </PageLayout>
   );
 }

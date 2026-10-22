@@ -46,16 +46,51 @@ const TaskMap = forwardRef(function TaskMap(
   const camera = useRef(null);
   const map = useRef(null);
 
+  // The camera can only be moved once the map has loaded. A move asked for
+  // before that (finding where the person is, at start-up, can be quicker
+  // than the map) waits here and happens as soon as it's ready. Only the
+  // latest waiting move counts.
+  const ready = useRef(false);
+  const waiting = useRef(null);
+
+  const moveCamera = move => {
+    if (!ready.current) {
+      waiting.current = move;
+      return;
+    }
+    try {
+      // A move the map turns down (it's being torn down, say) isn't worth
+      // an error on screen
+      Promise.resolve(move()).catch(() => {});
+    } catch {
+      // Same, for a move that fails straight away
+    }
+  };
+
+  const mapReady = () => {
+    if (ready.current) {
+      return;
+    }
+    ready.current = true;
+    const move = waiting.current;
+    waiting.current = null;
+    if (move) {
+      moveCamera(move);
+    }
+  };
+
   // What HomeScreen can ask the map to do. bottomInset is how much of the
   // screen the sheet covers, so the point lands in the visible part above it.
   useImperativeHandle(ref, () => ({
     flyTo(latitude, longitude, { zoom = 15, bottomInset = 0 } = {}) {
-      camera.current?.flyTo({
-        center: [longitude, latitude],
-        zoom,
-        duration: 900,
-        padding: { top: 0, right: 0, bottom: bottomInset, left: 0 },
-      });
+      moveCamera(() =>
+        camera.current?.flyTo({
+          center: [longitude, latitude],
+          zoom,
+          duration: 900,
+          padding: { top: 0, right: 0, bottom: bottomInset, left: 0 },
+        }),
+      );
     },
     // Frames a reminder circle in the part of the map that can be seen:
     // `top` and `bottom` are how much of the screen the search bar and the
@@ -64,11 +99,13 @@ const TaskMap = forwardRef(function TaskMap(
     // easing 'fly' swoops (for a new place), 'ease' just slides and zooms
     // (for a new radius).
     fitCircle(latitude, longitude, radius, { top = 0, bottom = 0, easing = 'fly' } = {}) {
-      camera.current?.fitBounds(circleBounds(latitude, longitude, Math.max(radius, 120)), {
-        padding: { top: top + 24, right: 32, bottom: bottom + 24, left: 32 },
-        duration: easing === 'fly' ? 800 : 350,
-        easing,
-      });
+      moveCamera(() =>
+        camera.current?.fitBounds(circleBounds(latitude, longitude, Math.max(radius, 120)), {
+          padding: { top: top + 24, right: 32, bottom: bottom + 24, left: 32 },
+          duration: easing === 'fly' ? 800 : 350,
+          easing,
+        }),
+      );
     },
     async centre() {
       const [longitude, latitude] = await map.current.getCenter();
@@ -156,6 +193,12 @@ const TaskMap = forwardRef(function TaskMap(
       compass={false}
       onPress={event => onPress?.(toLatLon(event.nativeEvent.lngLat))}
       onLongPress={event => onLongPress?.(toLatLon(event.nativeEvent.lngLat))}
+      // Ready for camera moves once the style is in. Also after a failed
+      // load (no signal, say): the camera can still move, and the map fills
+      // in when it can.
+      onDidFinishLoadingStyle={mapReady}
+      onDidFinishLoadingMap={mapReady}
+      onDidFailLoadingMap={mapReady}
       onRegionWillChange={event => {
         // Only the person's own drags and pinches, not the map moving itself
         if (event.nativeEvent.userInteraction) {

@@ -53,6 +53,29 @@ const TOP_BAR = 66;
 const SHEET_ACTIVE_Y = [-10, 10];
 const SHEET_FAIL_X = [-10, 10];
 
+// Where the phone is, for centring the map at start-up. The last position the
+// phone knows is instant, so that's used if it's recent. Otherwise (often on a
+// fresh install, or after location was off) it takes a new fix, which can take
+// a few seconds, longer indoors; after 15 seconds an older last position will
+// do, or nothing.
+async function whereAmI() {
+  const recent = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 }).catch(
+    () => null,
+  );
+  if (recent) {
+    return recent.coords;
+  }
+  const fresh = await Promise.race([
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+    new Promise(resolve => setTimeout(() => resolve(null), 15000)),
+  ]).catch(() => null);
+  if (fresh) {
+    return fresh.coords;
+  }
+  const older = await Location.getLastKnownPositionAsync().catch(() => null);
+  return older?.coords ?? null;
+}
+
 // A blank task for the form, optionally already pinned somewhere. Whether it
 // has a time and whether it has a place are two separate switches; the
 // reminder type is worked out from them when it's saved.
@@ -146,6 +169,10 @@ export default function Home() {
 
   const map = useRef(null);
   const sheet = useRef(null);
+  // Set once the map has been moved on purpose: dragged by the person, or
+  // moved to show a task or a place. After that, finding where the person is
+  // (which can take a few seconds) doesn't pull the map away.
+  const mapMoved = useRef(false);
 
   // What the sheet shows: 'calendar', 'task' (one task's details) or 'form'
   const [mode, setMode] = useState('calendar');
@@ -189,27 +216,34 @@ export default function Home() {
   // the person is and show the blue dot. Background location is only asked
   // for if they turn on place reminders in Settings.
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== 'granted') {
+      if (permission.status !== 'granted' || cancelled) {
         return;
       }
       setCanShowLocation(true);
 
-      const here = await Location.getLastKnownPositionAsync();
-      if (here) {
-        map.current?.flyTo(here.coords.latitude, here.coords.longitude, {
+      const here = await whereAmI();
+      if (here && !cancelled && !mapMoved.current) {
+        map.current?.flyTo(here.latitude, here.longitude, {
           zoom: 14,
           bottomInset: Dimensions.get('window').height * SNAP_FRACTIONS[HALF],
         });
       }
     })().catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Move the map so a point sits in the visible part above the sheet. If the
   // sheet is pulled up to full screen, lower it first so the map can be seen.
   const showOnMap = useCallback(
     (latitude, longitude, zoom = 15) => {
+      mapMoved.current = true;
       const index = Math.min(sheetIndex, HALF);
       if (sheetIndex > HALF) {
         sheet.current?.snapToIndex(HALF);
@@ -228,6 +262,7 @@ export default function Home() {
   //   sheetAt  the sheet position to fit above; HALF unless the sheet is to
   //            stay where it is
   const showCircle = (latitude, longitude, radius, { easing = 'fly', sheetAt = HALF } = {}) => {
+    mapMoved.current = true;
     if (sheetAt === HALF && sheetIndex !== HALF) {
       sheet.current?.snapToIndex(HALF);
     }
@@ -478,7 +513,10 @@ export default function Home() {
         onPinPress={pressPin}
         places={places}
         onPlacePress={pressPlace}
-        onUserMove={Keyboard.dismiss}
+        onUserMove={() => {
+          mapMoved.current = true;
+          Keyboard.dismiss();
+        }}
       />
 
       {/* box-none: this row's own empty space lets touches through to the map */}

@@ -26,6 +26,22 @@ class TaskServiceTest {
     }
 
     @Test
+    void refusesANewTaskOnceTheAccountHasReachedTheLimit() {
+        TaskService service = new TaskService(new InMemoryTaskRepository(), 2);
+        service.addTask(new Task("one", 53.7960, -1.5450, 200, today, owner));
+        service.addTask(new Task("two", 53.7960, -1.5450, 200, today, owner));
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> service.addTask(new Task("three", 53.7960, -1.5450, 200, today, owner)));
+        assertTrue(refused.getMessage().contains("limit of 2 tasks"));
+
+        // Someone else's tasks don't count towards it
+        User other = new User("other@example.com", "hash", "Other");
+        service.addTask(new Task("theirs", 53.7960, -1.5450, 200, today, other));
+        assertEquals(1, service.getAllTasks(other).size());
+    }
+
+    @Test
     void returnsOnlyTasksWithinRange() {
         TaskService service = newService();
         service.addTask(new Task("buy milk", 53.7960, -1.5450, 200, today, owner));

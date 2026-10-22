@@ -53,4 +53,9 @@ public class InMemoryTaskRepository implements TaskRepository {
     public long countWithVoiceNotes(User owner) {
         return findAllByOwner(owner).stream().filter(Task::hasVoiceNote).count();
     }
+
+    @Override
+    public long countByOwner(User owner) {
+        return findAllByOwner(owner).size();
+    }
 }

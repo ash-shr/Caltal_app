@@ -45,4 +45,9 @@ public class JpaTaskRepository implements TaskRepository {
     public long countWithVoiceNotes(User owner) {
         return springDataRepository.countByOwnerAndVoiceNoteMsIsNotNull(owner);
     }
+
+    @Override
+    public long countByOwner(User owner) {
+        return springDataRepository.countByOwner(owner);
+    }
 }
