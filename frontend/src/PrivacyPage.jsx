@@ -205,7 +205,7 @@ function PrivacyPage({ signedIn }) {
             ],
             [
               'Error reports',
-              'If the app or the server runs into an error: what went wrong and where in the code, the app version, and your phone’s model and operating system version. They do not include your name, email address, tasks or location.',
+              'If the app or the server runs into an error: what went wrong and where in the code, the app version, your phone’s model and operating system version, and a random ID for this installation of the app (so repeated errors on one phone can be told apart). They do not include your name, email address, tasks or location.',
               'Your device and our server, automatically',
             ],
             ['Messages', 'Anything you write when you contact us.', 'You'],
@@ -319,7 +319,7 @@ function PrivacyPage({ signedIn }) {
             ],
             [
               'Expo',
-              'Delivers updates to the phone app. It receives technical details such as the app version and your phone’s operating system.',
+              'Delivers updates to the phone app. It receives technical details such as the app version, your phone’s operating system and a random ID for this installation of the app.',
               'United States',
             ],
             [
