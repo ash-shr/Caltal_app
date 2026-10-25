@@ -21,13 +21,20 @@ object AlarmScheduler {
   // The "Send a test" reminder from Settings, also left alone by a reschedule
   const val TEST_ID = "test"
 
+  // Without the "Alarms & reminders" permission, Android may hold an inexact
+  // alarm back by up to an hour. Asking for a 10-minute window keeps it close
+  // while the phone is in use; Android won't make a window any shorter.
+  private const val WINDOW_MS = 10 * 60_000L
+
   fun schedule(context: Context, alarm: Alarm) {
     AlarmStore.put(context, alarm)
-    setExact(context, alarm.at, fireIntent(context, alarm.id))
+    setReminder(context, alarm.at, alarm.id)
   }
 
   fun cancel(context: Context, id: String) {
-    alarmManager(context).cancel(fireIntent(context, id))
+    val manager = alarmManager(context)
+    manager.cancel(fireIntent(context, id))
+    manager.cancel(fireIntent(context, id, backup = true))
     AlarmStore.remove(context, id)
   }
 
@@ -56,7 +63,7 @@ object AlarmScheduler {
     val now = System.currentTimeMillis()
     for (alarm in AlarmStore.all(context)) {
       if (alarm.at > now) {
-        setExact(context, alarm.at, fireIntent(context, alarm.id))
+        setReminder(context, alarm.at, alarm.id)
       } else {
         AlarmStore.remove(context, alarm.id)
       }
@@ -86,6 +93,30 @@ object AlarmScheduler {
     }
   }
 
+  // A reminder coming due. With exact alarms allowed, one alarm at the exact
+  // minute. Without, two inexact ones: a 10-minute window, which keeps close
+  // to the time while the phone is in use but waits while it's idle, and an
+  // allow-while-idle backup, which still comes when the phone is idle. The
+  // first to fire rings; the other then finds nothing to ring (AlarmReceiver).
+  fun setReminder(context: Context, at: Long, id: String) {
+    val manager = alarmManager(context)
+    val main = fireIntent(context, id)
+    val backup = fireIntent(context, id, backup = true)
+
+    if (canScheduleExact(context)) {
+      try {
+        manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, main)
+        manager.cancel(backup)
+        return
+      } catch (error: SecurityException) {
+        // Switched off a moment ago: fall through to the inexact pair
+      }
+    }
+
+    manager.setWindow(AlarmManager.RTC_WAKEUP, at, WINDOW_MS, main)
+    manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, backup)
+  }
+
   fun cancelOperation(context: Context, operation: PendingIntent) {
     alarmManager(context).cancel(operation)
   }
@@ -93,12 +124,14 @@ object AlarmScheduler {
   private fun alarmManager(context: Context) =
     context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-  private fun fireIntent(context: Context, id: String): PendingIntent {
+  private fun fireIntent(context: Context, id: String, backup: Boolean = false): PendingIntent {
+    val kind = if (backup) "fire-backup" else "fire"
     val intent = Intent(context, AlarmReceiver::class.java)
       .setAction(ACTION_FIRE)
       // The address is part of what makes two PendingIntents different, so
-      // each reminder gets its own instead of replacing the last one
-      .setData(Uri.parse("caltal-alarm://fire/" + Uri.encode(id)))
+      // each reminder (and its backup) gets its own instead of replacing the
+      // last one
+      .setData(Uri.parse("caltal-alarm://" + kind + "/" + Uri.encode(id)))
       .putExtra(EXTRA_ID, id)
     return PendingIntent.getBroadcast(
       context,

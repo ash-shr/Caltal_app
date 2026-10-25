@@ -354,8 +354,8 @@ export default function Settings() {
           {settings.timeReminders && notificationsOn !== false && !exactOn && (
             <View style={styles.stack}>
               <Text style={styles.warning}>
-                {'Android may send reminders a few minutes late until Caltal is allowed to ' +
-                  'set exact alarms. Turn on "Allow setting alarms and reminders" for Caltal.'}
+                {'Android may send reminders late, sometimes by up to an hour, until Caltal is ' +
+                  'allowed to set exact alarms. Turn on "Allow setting alarms and reminders" for Caltal.'}
               </Text>
               <Button
                 title="Allow exact reminders"
@@ -401,7 +401,7 @@ export default function Settings() {
 
               <Toggle
                 label="Ring like an alarm"
-                hint="Instead of a notification, reminders fill the screen and ring until you answer, snooze or dismiss them, even with the phone locked or on silent. Answering opens the task and plays its voice note."
+                hint="Instead of a notification, reminders fill the screen and ring until you answer, snooze or dismiss them, even with the phone locked or on silent. Answering opens the task and plays its voice note. During a call, it waits and rings when the call ends."
                 value={settings.ringReminders}
                 onChange={on => updateSettings({ ringReminders: on })}
               />

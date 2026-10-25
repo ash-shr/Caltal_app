@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import CaltalAlarm from '../modules/caltal-alarm';
 
 // Whether time reminders go off at the exact minute.
@@ -9,8 +9,9 @@ import CaltalAlarm from '../modules/caltal-alarm';
 // starts off for new installs. Caltal asks for SCHEDULE_EXACT_ALARM, the
 // permission the person grants, rather than USE_EXACT_ALARM, which Google
 // Play only allows for alarm-clock and calendar apps. Without it, reminders
-// still arrive, but Android may hold them back by a few minutes, longer when
-// the phone has been idle.
+// still arrive, but Android may hold them back, by up to an hour for ordinary
+// notifications. (Ringing reminders ask for a 10-minute window, which holds
+// while the phone is in use: modules/caltal-alarm, AlarmScheduler.)
 //
 // iPhones always deliver on time, so there's nothing to ask there.
 const askable = Platform.OS === 'android' && CaltalAlarm != null;
@@ -25,6 +26,20 @@ export function openExactReminderSettings() {
   if (askable) {
     CaltalAlarm.openExactAlarmSettings();
   }
+}
+
+// After saving a task with a time, while exact reminders are off: asks once,
+// with the reason, and opens the switch if the person agrees.
+export function askForExactReminders() {
+  Alert.alert(
+    'Get reminders on time?',
+    'Until you allow it, Android can send Caltal’s reminders late, sometimes by up to an hour. ' +
+      'On the next screen, turn on "Allow setting alarms and reminders".',
+    [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'Allow', onPress: openExactReminderSettings },
+    ],
+  );
 }
 
 // For screens that show a prompt: looks again whenever Caltal comes back to

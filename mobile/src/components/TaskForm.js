@@ -8,7 +8,11 @@ import Button from './Button';
 import DateTimeField from './DateTimeField';
 import VoiceNoteField from './VoiceNoteField';
 import { today } from '../dates';
-import { openExactReminderSettings, useExactRemindersAllowed } from '../exactReminders';
+import {
+  askForExactReminders,
+  openExactReminderSettings,
+  useExactRemindersAllowed,
+} from '../exactReminders';
 import { savedPlaceAt } from '../places';
 import { RADIUS_MAX, RADIUS_MIN } from '../settings';
 import { colours } from '../theme';
@@ -22,6 +26,10 @@ export function reminderTypeOf(draft) {
   if (draft.timeOn) return 'TIME';
   return 'NONE';
 }
+
+// Whether the "Get reminders on time?" question has been asked since Caltal
+// was opened. Once is enough: the note under the time stays as a reminder.
+let askedForExactReminders = false;
 
 // A sensible starting time for a reminder on `date`: the next whole hour if
 // it's today (or 23:59 late in the evening, so it isn't already past), and
@@ -141,6 +149,11 @@ export default function TaskForm({
     setBusy(true);
     try {
       await onSubmit(payload);
+
+      if (draft.timeOn && !exactAllowed && !askedForExactReminders) {
+        askedForExactReminders = true;
+        askForExactReminders();
+      }
     } catch (failure) {
       setError(failure.message);
       setBusy(false);
@@ -301,7 +314,7 @@ export default function TaskForm({
 
       {draft.timeOn && !exactAllowed && (
         <Text style={styles.note}>
-          {'This phone may send the reminder a few minutes late. '}
+          {'This phone may send the reminder late, sometimes by up to an hour. '}
           <Text style={styles.noteLink} onPress={tap(openExactReminderSettings)}>
             Allow exact reminders
           </Text>
