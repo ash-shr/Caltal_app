@@ -44,6 +44,6 @@ export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 // Where people can reach whoever runs Caltal: shown on the privacy policy and
 // the delete-your-account page. Google Play needs a contact address too.
 // Empty until one is chosen, and the pages leave the line out until then.
-export const CONTACT_EMAIL = 'ash.shr.005@gmail.com';
+export const CONTACT_EMAIL = 'luckyraysharma@gmail.com';
 
-//test12
+//test123
