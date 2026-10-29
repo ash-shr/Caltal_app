@@ -59,7 +59,8 @@ export function TasksProvider({ children }) {
   }, []);
 
   // Load once settings are known, and again whenever reminders are switched on
-  // or off (or to ringing), so they get rescheduled.
+  // or off (or to ringing), or the set-up screen is done, so they get
+  // rescheduled.
   useEffect(() => {
     if (settingsLoaded) {
       refresh();
@@ -69,6 +70,7 @@ export function TasksProvider({ children }) {
     settings.timeReminders,
     settings.placeReminders,
     settings.ringReminders,
+    settings.setupShown,
     refresh,
   ]);
 

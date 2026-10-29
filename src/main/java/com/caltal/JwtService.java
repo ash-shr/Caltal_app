@@ -34,7 +34,7 @@ public class JwtService {
 
     public JwtService(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiry-hours:24}") long expiryHours) {
+            @Value("${jwt.expiry-hours:720}") long expiryHours) {
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < MINIMUM_SECRET_BYTES) {
             throw new IllegalStateException(
                     "JWT_SECRET must be set and at least " + MINIMUM_SECRET_BYTES + " bytes long");

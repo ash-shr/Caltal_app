@@ -8,7 +8,7 @@ import SettingsPage from './SettingsPage';
 import Splash from './Splash';
 import TermsPage from './TermsPage';
 import VerifyEmail from './VerifyEmail';
-import { getStoredUser, logout } from './api';
+import { getStoredUser, logout, refreshSession } from './api';
 import { navigate, usePath } from './router';
 import { usePlaces } from './usePlaces';
 import { useTasks } from './useTasks';
@@ -34,6 +34,16 @@ function App() {
   const [user, setUser] = useState(getStoredUser());
   const [booting, setBooting] = useState(true);
   const path = usePath();
+
+  // Renews the sign-in on every visit, so it only runs out after 30 days of
+  // not using Caltal at all (see refreshSession). Offline, it waits for the
+  // next visit.
+  const signedIn = user != null;
+  useEffect(() => {
+    if (signedIn) {
+      refreshSession().catch(() => {});
+    }
+  }, [signedIn]);
 
   // Every reload starts on the splash, the way an app does
   useEffect(() => {

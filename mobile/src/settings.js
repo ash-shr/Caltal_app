@@ -15,6 +15,9 @@ export const DEFAULT_SETTINGS = {
   // ordinary notifications. Off until the person chooses it.
   ringReminders: false,
   defaultRadius: 200,
+  // Whether the "Set up your reminders" screen, which asks for every
+  // permission in one go, has been shown on this phone (PermissionsSetup)
+  setupShown: false,
 };
 
 // For the place-reminder task, which can run with the rest of the app not

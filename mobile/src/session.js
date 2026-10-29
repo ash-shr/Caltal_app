@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { getStoredUser, logout, setSessionExpiredHandler } from './api';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { getStoredUser, logout, refreshSession, setSessionExpiredHandler } from './api';
 import { clearAllReminders } from './reminders';
 
 // Long enough for the peeling-orange animation to play once at start-up.
@@ -8,6 +9,10 @@ const SPLASH_MS = 1400;
 // The longest the splash waits for the home screen to load its tasks. On a
 // slow connection the map with no tasks yet is better than waiting on.
 const HOME_WAIT_MS = 5000;
+
+// How often the sign-in is renewed while Caltal is in use: at most twice a
+// day, when it's opened or comes back to the front.
+const REFRESH_EVERY_MS = 12 * 60 * 60 * 1000;
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -50,6 +55,38 @@ export function SessionProvider({ children }) {
   }, []);
 
   const homeReady = useCallback(() => setWaiting(false), []);
+
+  // Keeps the sign-in from running out. A session ending used to mean being
+  // signed out after a day, and every reminder on the phone cancelled with it.
+  // Now the token is swapped for a fresh 30-day one each time Caltal is
+  // opened (at most twice a day). Offline, it simply tries again next time.
+  const lastRefresh = useRef(0);
+  const signedIn = user !== null;
+
+  useEffect(() => {
+    if (!signedIn) {
+      lastRefresh.current = 0;
+      return undefined;
+    }
+
+    const renew = () => {
+      if (Date.now() - lastRefresh.current < REFRESH_EVERY_MS) {
+        return;
+      }
+      lastRefresh.current = Date.now();
+      refreshSession().catch(() => {
+        lastRefresh.current = 0;
+      });
+    };
+
+    renew();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        renew();
+      }
+    });
+    return () => subscription.remove();
+  }, [signedIn]);
 
   // Once signed in, never leave the splash up for good if the home screen
   // can't say it's ready (no connection, say).

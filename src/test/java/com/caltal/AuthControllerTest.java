@@ -1,6 +1,8 @@
 package com.caltal;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,6 +42,27 @@ class AuthControllerTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @Test
+    @WithMockUser("ash@example.com")
+    void refreshingGivesASignedInPersonAFreshToken() throws Exception {
+        User ash = new User("ash@example.com", "hash", "Ash");
+        when(currentUser.get()).thenReturn(ash);
+        when(authService.refresh(ash))
+                .thenReturn(new AuthResponse("fresh-token", "Ash", "ash@example.com"));
+
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("fresh-token"));
+    }
+
+    @Test
+    void refreshingNeedsAValidToken() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isUnauthorized());
+
+        verify(authService, never()).refresh(any(User.class));
+    }
 
     @Test
     void forgotPasswordAlwaysJustSaysDone() throws Exception {

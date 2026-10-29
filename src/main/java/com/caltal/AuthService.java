@@ -169,6 +169,13 @@ public class AuthService {
         users.save(user);
     }
 
+    // A fresh token for someone already signed in, so a session that's being
+    // used never runs out (see jwt.expiry-hours). The old token keeps working
+    // until it expires; signing out ends both.
+    public AuthResponse refresh(User user) {
+        return respondWithToken(user);
+    }
+
     private AuthResponse respondWithToken(User user) {
         return new AuthResponse(
                 jwtService.generateToken(user),

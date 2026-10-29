@@ -46,7 +46,11 @@ export function syncReminders(tasks, getSettings) {
     const settings = getSettings();
 
     if (settings.timeReminders) {
-      await scheduleTimeReminders(tasks, { ring: settings.ringReminders });
+      await scheduleTimeReminders(tasks, {
+        ring: settings.ringReminders,
+        // The set-up screen asks first, with the other permissions
+        ask: settings.setupShown,
+      });
     } else {
       await clearTimeReminders();
     }

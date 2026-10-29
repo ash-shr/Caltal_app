@@ -249,6 +249,23 @@ export function deletePlace(id) {
   return request(`${BASE_URL}/places/${id}`, { method: 'DELETE' });
 }
 
+// Swaps the stored token for a fresh one. A sign-in lasts 30 days from when
+// its token was issued (jwt.expiry-hours on the server), so doing this on
+// every visit keeps anyone who uses Caltal signed in. An expired token gets a
+// 401, which signs out as usual (see request above).
+export async function refreshSession() {
+  const token = getToken();
+  if (!token) {
+    return null;
+  }
+  const result = await request(`${BASE_URL}/auth/refresh`, { method: 'POST' });
+  // Signed out in another tab while this was on its way: stay signed out
+  if (getToken() === token) {
+    storeSession(result);
+  }
+  return result;
+}
+
 // Revokes every token this account holds, on every device. The local copy is
 // cleared regardless — if the server can't be reached, the user still expects
 // to be signed out on this screen.

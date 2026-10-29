@@ -147,6 +147,24 @@ export function requestPasswordReset(email) {
 
 // Tells the server to revoke every token this account holds, then forgets the
 // session here. The local half runs even if the server can't be reached.
+// Swaps the stored token for a fresh one. A sign-in lasts 30 days from when
+// its token was issued (jwt.expiry-hours on the server), so doing this
+// whenever Caltal is opened keeps anyone who uses it signed in, and their
+// reminders set. An already-expired token gets a 401, which ends the session
+// as usual (see request above).
+export async function refreshSession() {
+  const token = await getToken();
+  if (!token) {
+    return null;
+  }
+  const result = await request('/auth/refresh', { method: 'POST' });
+  // Signed out while this was on its way: don't bring the session back
+  if ((await getToken()) === token) {
+    await storeSession(result);
+  }
+  return result;
+}
+
 export async function logout() {
   try {
     await request('/auth/logout', { method: 'POST' });

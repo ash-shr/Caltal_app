@@ -54,7 +54,13 @@ export async function notificationsAllowed() {
   return current.granted;
 }
 
-async function canNotify() {
+// ask: false only checks. Used until the set-up screen has been shown, so its
+// questions come one at a time, in order, instead of on top of each other.
+// Either way it only asks if the person has never answered: after a "no",
+// asking again straight away would be a nag, and Android stops showing the
+// question at all after a second "no". Settings then offers the phone's
+// settings instead.
+async function canNotify({ ask = true } = {}) {
   // Android 13+ won't show the permission prompt until the app has at least
   // one notification channel, so make ours first.
   await reminderChannel();
@@ -65,7 +71,7 @@ async function canNotify() {
     return true;
   }
 
-  if (!current.canAskAgain) {
+  if (!ask || current.status !== 'undetermined') {
     return false;
   }
 
@@ -75,9 +81,10 @@ async function canNotify() {
 
 // Replaces whatever was scheduled before with reminders for these tasks.
 // ring: they ring like an alarm instead of being notifications (Android).
+// ask: whether it may ask for notification permission (see canNotify).
 // Returns how many were scheduled.
-export async function scheduleTimeReminders(tasks, { ring = false } = {}) {
-  if (!(await canNotify())) {
+export async function scheduleTimeReminders(tasks, { ring = false, ask = true } = {}) {
+  if (!(await canNotify({ ask }))) {
     return 0;
   }
 

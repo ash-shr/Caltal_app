@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Keyboard,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../../components/Avatar';
 import DayTasks from '../../components/DayTasks';
 import MonthCalendar from '../../components/MonthCalendar';
+import PermissionsSetup from '../../components/PermissionsSetup';
 import PlaceRemindersBanner from '../../components/PlaceRemindersBanner';
 import ProfileMenu from '../../components/ProfileMenu';
 import SavePlaceModal from '../../components/SavePlaceModal';
@@ -143,8 +147,8 @@ export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { user, signOut, homeReady } = useSession();
-  const { settings } = useSettings();
+  const { user, signOut, homeReady, waiting } = useSession();
+  const { settings, loaded: settingsLoaded } = useSettings();
   const {
     tasks,
     loading,
@@ -173,6 +177,8 @@ export default function Home() {
   // moved to show a task or a place. After that, finding where the person is
   // (which can take a few seconds) doesn't pull the map away.
   const mapMoved = useRef(false);
+  // Goes up each time the person drags or zooms the map themselves
+  const userMoves = useRef(0);
 
   // What the sheet shows: 'calendar', 'task' (one task's details) or 'form'
   const [mode, setMode] = useState('calendar');
@@ -185,6 +191,8 @@ export default function Home() {
   const [sheetIndex, setSheetIndex] = useState(HALF);
   const [menuOpen, setMenuOpen] = useState(false);
   const [canShowLocation, setCanShowLocation] = useState(false);
+  // While the "Show where I am" button is finding the phone
+  const [locating, setLocating] = useState(false);
   // The task whose voice note should start by itself (after answering a
   // ringing reminder)
   const [autoPlayId, setAutoPlayId] = useState(null);
@@ -212,10 +220,18 @@ export default function Home() {
     !settings.placeReminders &&
     tasks.some(task => !task.complete && hasPlace(task));
 
-  // Ask for "while using the app" location once, so the map can start where
-  // the person is and show the blue dot. Background location is only asked
-  // for if they turn on place reminders in Settings.
+  // The first time the map opens on this phone, the set-up screen asks for
+  // every permission in turn. It waits for the splash to go.
+  const showSetup = settingsLoaded && !settings.setupShown && !waiting;
+  const setupDone = settingsLoaded && settings.setupShown;
+
+  // Once set-up is done (or was skipped), the map starts where the person is
+  // and shows the blue dot. Location "while using the app" is asked for here
+  // only if the set-up screen didn't get an answer.
   useEffect(() => {
+    if (!setupDone) {
+      return undefined;
+    }
     let cancelled = false;
 
     (async () => {
@@ -237,7 +253,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setupDone]);
 
   // Move the map so a point sits in the visible part above the sheet. If the
   // sheet is pulled up to full screen, lower it first so the map can be seen.
@@ -487,6 +503,89 @@ export default function Home() {
   }, []);
 
 
+  // ---- Show where I am ----
+
+  // The button under the profile picture. The phone's last known position
+  // is instant, so the map moves straight away; a fresh fix then sharpens it,
+  // unless the person has started moving the map in the meantime. Asks for
+  // location if Caltal doesn't have it, and offers to switch the phone's
+  // location on if it's off, rather than doing nothing.
+  const locateMe = async () => {
+    if (locating) {
+      return;
+    }
+    setLocating(true);
+    const movesAtStart = userMoves.current;
+
+    try {
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (!permission.granted && permission.canAskAgain) {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      if (!permission.granted) {
+        Alert.alert(
+          'Caltal can’t see your location',
+          'To show where you are, allow Caltal to use your location in your phone’s settings.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open settings', onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+      setCanShowLocation(true);
+
+      if (!(await Location.hasServicesEnabledAsync())) {
+        if (Platform.OS === 'android') {
+          // Android's own "Turn on location?" box
+          await Location.enableNetworkProviderAsync().catch(() => {});
+        }
+        if (!(await Location.hasServicesEnabledAsync())) {
+          Alert.alert(
+            'Location is switched off',
+            'Turn on Location in your phone’s settings to see where you are on the map.',
+          );
+          return;
+        }
+      }
+
+      const known = await Location.getLastKnownPositionAsync({ maxAge: 2 * 60 * 1000 }).catch(
+        () => null,
+      );
+      if (known) {
+        showOnMap(known.coords.latitude, known.coords.longitude, 16);
+      }
+
+      const fresh = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise(resolve => setTimeout(() => resolve(null), 10000)),
+      ]).catch(() => null);
+
+      if (userMoves.current !== movesAtStart) {
+        return;
+      }
+      if (fresh) {
+        showOnMap(fresh.coords.latitude, fresh.coords.longitude, 16);
+        return;
+      }
+      if (known) {
+        return;
+      }
+
+      const older = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (older) {
+        showOnMap(older.coords.latitude, older.coords.longitude, 16);
+      } else {
+        Alert.alert(
+          'Couldn’t find you just now',
+          'Your phone couldn’t get a location. Try again in a moment, ideally near a window or outside.',
+        );
+      }
+    } finally {
+      setLocating(false);
+    }
+  };
+
   // ---- Profile menu ----
 
   const goTo = path => {
@@ -515,6 +614,7 @@ export default function Home() {
         onPlacePress={pressPlace}
         onUserMove={() => {
           mapMoved.current = true;
+          userMoves.current += 1;
           Keyboard.dismiss();
         }}
       />
@@ -550,19 +650,18 @@ export default function Home() {
         </View>
 
         <View style={styles.secondRow} pointerEvents="box-none">
-          {canShowLocation && (
-            <Pressable
-              onPress={() =>
-                Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-                  .then(here => showOnMap(here.coords.latitude, here.coords.longitude))
-                  .catch(() => {})
-              }
-              style={styles.roundButton}
-              accessibilityLabel="Show where I am"
-            >
+          <Pressable
+            onPress={locateMe}
+            style={styles.roundButton}
+            accessibilityLabel="Show where I am"
+            accessibilityState={{ busy: locating }}
+          >
+            {locating ? (
+              <ActivityIndicator size="small" color={colours.orange} />
+            ) : (
               <Ionicons name="navigate" size={18} color={colours.ink} />
-            </Pressable>
-          )}
+            )}
+          </Pressable>
         </View>
       </View>
 
@@ -686,6 +785,8 @@ export default function Home() {
       {savingSpot && (
         <SavePlaceModal spot={savingSpot} onClose={() => setSavingSpot(null)} />
       )}
+
+      <PermissionsSetup visible={showSetup} />
     </View>
   );
 }

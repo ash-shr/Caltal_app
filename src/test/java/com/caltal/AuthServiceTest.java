@@ -147,6 +147,17 @@ class AuthServiceTest {
     }
 
     @Test
+    void refreshingGivesASignedInPersonAFreshToken() {
+        User ash = confirmed("ash@example.com");
+        when(jwt.generateToken(ash)).thenReturn("fresh-token");
+
+        AuthResponse response = service().refresh(ash);
+
+        assertEquals("fresh-token", response.getToken());
+        assertEquals("ash@example.com", response.getEmail());
+    }
+
+    @Test
     void signingInToAConfirmedAccountGivesASession() {
         User ash = confirmed("ash@example.com");
         when(users.findByEmail("ash@example.com")).thenReturn(Optional.of(ash));

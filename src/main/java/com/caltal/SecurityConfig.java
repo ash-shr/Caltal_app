@@ -99,6 +99,7 @@ public class SecurityConfig {
                         // Signing out needs to know who is signing out, so it
                         // must come before the rule that opens up /api/auth/**.
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // The React app itself is public; the API behind it is not.

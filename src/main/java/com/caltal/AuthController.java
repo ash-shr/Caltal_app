@@ -66,6 +66,13 @@ public class AuthController {
         authService.logout(currentUser.get());
     }
 
+    // Swaps a valid token for a fresh one. Requires a valid token, like logout:
+    // an expired one gets a 401 and the person signs in again.
+    @PostMapping("/refresh")
+    public AuthResponse refresh() {
+        return authService.refresh(currentUser.get());
+    }
+
     // Always "done", whether or not the email has an account. See the note on
     // AccountEmailService.requestPasswordReset.
     @PostMapping("/forgot-password")
