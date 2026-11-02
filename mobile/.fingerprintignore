@@ -1,0 +1,6 @@
+# Gradle's cache folders. Editors that open Android projects (VS Code's Java
+# extension, Android Studio) leave them inside packages in node_modules. EAS
+# never has them, so counting them made the fingerprint worked out on this Mac
+# differ from the one EAS works out, and builds stopped with "Runtime version
+# mismatch". See https://docs.expo.dev/versions/latest/sdk/fingerprint/
+**/.gradle/**/*
