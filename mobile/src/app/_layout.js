@@ -56,10 +56,16 @@ function RootNavigator() {
       {/* Stack.Protected decides which screens exist. Signed in: the app
           screens in (app)/. Signed out: only sign-in. When `user` changes,
           Expo Router moves to the right one by itself. */}
+      {/* No slide between sign-in and the app: the swap happens under the
+          splash at start-up, and a slide could still be running when the
+          splash lifts, so people glimpsed the sign-in screen and thought
+          they'd been signed out. (The app's own screens, like Settings,
+          still slide: they're in (app)/_layout.js.) */}
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colours.background },
+          animation: 'none',
         }}
       >
         <Stack.Protected guard={user !== null}>

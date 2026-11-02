@@ -145,8 +145,6 @@ export function requestPasswordReset(email) {
   });
 }
 
-// Tells the server to revoke every token this account holds, then forgets the
-// session here. The local half runs even if the server can't be reached.
 // Swaps the stored token for a fresh one. A sign-in lasts 30 days from when
 // its token was issued (jwt.expiry-hours on the server), so doing this
 // whenever Caltal is opened keeps anyone who uses it signed in, and their
@@ -165,6 +163,8 @@ export async function refreshSession() {
   return result;
 }
 
+// Tells the server to revoke every token this account holds, then forgets the
+// session here. The local half runs even if the server can't be reached.
 export async function logout() {
   try {
     await request('/auth/logout', { method: 'POST' });
