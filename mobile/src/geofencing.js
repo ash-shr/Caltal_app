@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pastDay, today } from './dates';
+import { distanceMetres } from './geo';
 import { reminderChannel } from './notificationChannel';
 import { canRing, ringNow } from './ringing';
 import { readStoredSettings } from './settings';
@@ -32,6 +33,39 @@ async function readWatched() {
   }
 }
 
+// The circles the phone is inside right now, as far as Caltal knows, with
+// when it was last seen inside: { 'task-12': 1793300000000 }. You're reminded
+// once per visit: when you arrive, or when Caltal finds you're already
+// inside. Re-registering the circles, or opening Caltal while you're still
+// there, doesn't remind you again. Leaving clears it, so the next visit
+// reminds you again.
+const INSIDE_KEY = 'caltal_inside_places';
+
+// If the phone never reports leaving (it can miss one), an arrival this long
+// after Caltal last saw you inside counts as a new visit anyway
+const VISIT_FORGOTTEN_MS = 12 * 60 * 60 * 1000;
+
+// How far outside a circle the phone must be seen before Caltal counts it as
+// having left, so a wobbly location fix at the edge doesn't count as a new
+// visit
+const LEAVE_MARGIN_METRES = 100;
+
+// Location fixes vaguer than this are ignored for "are you inside?"
+const MAX_FIX_ERROR_METRES = 200;
+
+async function readInside() {
+  try {
+    const raw = await AsyncStorage.getItem(INSIDE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeInside(inside) {
+  await AsyncStorage.setItem(INSIDE_KEY, JSON.stringify(inside));
+}
+
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   if (error) {
     console.log('Geofence task error', error);
@@ -39,28 +73,50 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   }
 
   const { eventType, region } = data;
+  const inside = await readInside();
 
-  // Only announce arrivals. Leaving a place is not interesting yet.
+  if (eventType === Location.GeofencingEventType.Exit) {
+    if (inside[region.identifier]) {
+      delete inside[region.identifier];
+      await writeInside(inside);
+    }
+    return;
+  }
+
   if (eventType !== Location.GeofencingEventType.Enter) {
     return;
   }
 
-  const watched = await readWatched();
-  const title = watched?.names?.[region.identifier] ?? 'A task is nearby';
-  const body = arrivalMessage(watched?.dueDates?.[region.identifier]);
+  // Already reminded about this visit
+  const lastSeen = inside[region.identifier];
+  if (lastSeen && Date.now() - lastSeen < VISIT_FORGOTTEN_MS) {
+    return;
+  }
+
+  inside[region.identifier] = Date.now();
+  await writeInside(inside);
+  await announceArrival(region.identifier, await readWatched());
+});
+
+// The reminder for arriving at a task's place. The task's time, if it has
+// one, doesn't matter here: being inside the circle is enough, at any hour.
+// The time reminder is separate (timeReminders.js) and still comes at its time.
+async function announceArrival(identifier, watched) {
+  const title = watched?.names?.[identifier] ?? 'A task is nearby';
+  const body = arrivalMessage(watched?.dueDates?.[identifier]);
 
   // Set to ring like an alarm (Android): the ringing screen instead
   const settings = await readStoredSettings();
   if (settings.ringReminders && canRing) {
-    const taskId = Number(region.identifier.replace('task-', ''));
+    const taskId = Number(identifier.replace('task-', ''));
     await ringNow({
       // Each arrival rings on its own
-      id: `place-${region.identifier}-${Date.now()}`,
+      id: `place-${identifier}-${Date.now()}`,
       at: Date.now(),
       title,
       body,
       taskId: Number.isFinite(taskId) ? taskId : null,
-      hasVoiceNote: Boolean(watched?.voiceNotes?.[region.identifier]),
+      hasVoiceNote: Boolean(watched?.voiceNotes?.[identifier]),
     });
     return;
   }
@@ -76,7 +132,81 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
     // "show it now" on the default one.
     trigger: channelId ? { channelId } : null,
   });
-});
+}
+
+// Where the phone is now, or null if that can't be known well enough. The
+// last known position is instant; a fresh fix is only taken if that's old.
+async function currentPosition() {
+  try {
+    const recent = await Location.getLastKnownPositionAsync({
+      maxAge: 2 * 60 * 1000,
+      requiredAccuracy: MAX_FIX_ERROR_METRES,
+    });
+    if (recent) {
+      return recent.coords;
+    }
+
+    const fresh = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise(resolve => setTimeout(() => resolve(null), 10000)),
+    ]);
+    if (fresh && (fresh.coords.accuracy ?? 0) <= MAX_FIX_ERROR_METRES) {
+      return fresh.coords;
+    }
+  } catch {
+    // No fix: the circles themselves still report arrivals
+  }
+  return null;
+}
+
+// The phone only reports crossing into a circle. If you're already inside
+// one (you've just pinned a task where you're standing, or the report never
+// came), nothing would remind you. So whenever Caltal brings its reminders up
+// to date (it's opened, comes back to the front, or a task is saved), it also
+// checks where the phone is now. Returns the circles you're newly found inside;
+// the caller reminds you about them.
+export async function findCirclesYouAreIn(regions, here) {
+  const inside = await readInside();
+  const watching = new Set(regions.map(region => region.identifier));
+  const arrivals = [];
+  let changed = false;
+
+  // Forget circles that are no longer watched (done, deleted, moved)
+  for (const identifier of Object.keys(inside)) {
+    if (!watching.has(identifier)) {
+      delete inside[identifier];
+      changed = true;
+    }
+  }
+
+  if (here) {
+    for (const region of regions) {
+      const distance = distanceMetres(
+        here.latitude,
+        here.longitude,
+        region.latitude,
+        region.longitude,
+      );
+
+      if (distance <= region.radius) {
+        // Inside: remind only if this is a new visit, and note the time either way
+        if (!inside[region.identifier]) {
+          arrivals.push(region.identifier);
+        }
+        inside[region.identifier] = Date.now();
+        changed = true;
+      } else if (distance > region.radius + LEAVE_MARGIN_METRES && inside[region.identifier]) {
+        delete inside[region.identifier];
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    await writeInside(inside);
+  }
+  return arrivals;
+}
 
 // What an arrival says. An unfinished task from a day that has passed still
 // reminds you when you get there, but says it's an older one and which day it
@@ -122,7 +252,8 @@ export async function watchPlaces(tasks) {
     // precise, and the OS uses cell and wifi positioning to save battery.
     radius: Math.max(task.reminderRadius ?? 200, 100),
     notifyOnEnter: true,
-    notifyOnExit: false,
+    // Leaving is told too, only so the next visit reminds you again
+    notifyOnExit: true,
   }));
 
   if (regions.length === 0) {
@@ -131,11 +262,11 @@ export async function watchPlaces(tasks) {
   }
 
   // Registering a region makes the phone check straight away whether you're
-  // already inside it — and say "arrived" if you are. So re-register only
-  // when the regions actually changed, or opening the app at home would
-  // remind you about your home task every single time. The names, voice
-  // notes and days are saved every time, though: they can change without the
-  // regions changing.
+  // already inside it, and say "arrived" if you are. Re-registering only
+  // when the regions actually changed keeps that to a minimum; the record of
+  // which circles you're inside (INSIDE_KEY) stops it reminding you twice
+  // about one visit. The names, voice notes and days are saved every time:
+  // they can change without the regions changing.
   const fingerprint = JSON.stringify(regions);
   const watched = await readWatched();
   const running = await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK);
@@ -150,16 +281,25 @@ export async function watchPlaces(tasks) {
     JSON.stringify({ fingerprint, names, voiceNotes, dueDates }),
   );
 
-  if (running && watched?.fingerprint === fingerprint) {
-    return regions.length;
+  // Where you are now is checked first, so the "arrived" that registering
+  // may bring for a circle you're in finds it already dealt with
+  const arrivals = await findCirclesYouAreIn(regions, await currentPosition());
+
+  if (!running || watched?.fingerprint !== fingerprint) {
+    await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
   }
 
-  await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
+  const latest = { names, voiceNotes, dueDates };
+  for (const identifier of arrivals) {
+    await announceArrival(identifier, latest);
+  }
+
   return regions.length;
 }
 
 export async function stopWatching() {
   await AsyncStorage.removeItem(WATCHED_KEY);
+  await AsyncStorage.removeItem(INSIDE_KEY);
   if (await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK)) {
     await Location.stopGeofencingAsync(GEOFENCE_TASK);
   }

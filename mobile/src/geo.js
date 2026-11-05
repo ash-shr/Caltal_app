@@ -49,6 +49,20 @@ export function circleBounds(latitude, longitude, radiusMetres) {
   ];
 }
 
+// Straight-line distance in metres between two points (the haversine
+// formula). Plenty accurate at the scale of a reminder circle.
+export function distanceMetres(latitude1, longitude1, latitude2, longitude2) {
+  const toRadians = degrees => (degrees * Math.PI) / 180;
+  const latitudeChange = toRadians(latitude2 - latitude1);
+  const longitudeChange = toRadians(longitude2 - longitude1);
+  const a =
+    Math.sin(latitudeChange / 2) ** 2 +
+    Math.cos(toRadians(latitude1)) *
+      Math.cos(toRadians(latitude2)) *
+      Math.sin(longitudeChange / 2) ** 2;
+  return 2 * EARTH_RADIUS_METRES * Math.asin(Math.sqrt(a));
+}
+
 export function point(latitude, longitude, properties = {}) {
   return {
     type: 'Feature',
