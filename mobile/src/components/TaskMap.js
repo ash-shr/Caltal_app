@@ -1,24 +1,14 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
-import { StyleSheet } from 'react-native';
-import {
-  Camera,
-  GeoJSONSource,
-  Layer,
-  // Renamed so it can't be confused with JavaScript's built-in Map
-  Map as MapView,
-  NativeUserLocation,
-} from '@maplibre/maplibre-react-native';
-import { DEFAULT_CENTRE, MAP_STYLE } from '../config';
-import { circleBounds, circlePolygon, collection, point } from '../geo';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { DEFAULT_CENTRE } from '../config';
+import { circleBounds } from '../geo';
 import { hasPlace } from '../tasks';
 import { colours } from '../theme';
 
-// The full-screen map behind everything on the home screen.
-//
-// Pins and radius circles are drawn by the map itself (GeoJSON sources and
-// layers), not as React views floating on top. The map's own renderer keeps
-// them glued to the ground while panning and zooming, and stays fast with
-// hundreds of pins.
+// The full-screen map behind everything on the home screen: Google Maps on
+// Android. (react-native-maps shows Apple Maps on iPhone unless it also gets a
+// Google key for iOS.)
 //
 //   tasks       every task; the ones with a place get a pin
 //   selectedId  the task being looked at, drawn dark with its radius
@@ -26,6 +16,10 @@ import { colours } from '../theme';
 //               when it has a place (placeOn) that's been put somewhere
 //   places      the person's saved places (Home, Work…), drawn as white dots
 //   showUser    location permission granted, so the blue dot can be shown
+//   padding     { top, bottom }: how much of the screen the search bar and the
+//               sheet cover. The map keeps its centre, and Google's logo, in
+//               the part that can be seen. (Google's terms say the logo must
+//               stay visible.)
 //   onUserMove  the person has started dragging or zooming the map
 const TaskMap = forwardRef(function TaskMap(
   {
@@ -34,7 +28,7 @@ const TaskMap = forwardRef(function TaskMap(
     draft,
     places = [],
     showUser,
-    attributionTop = 120,
+    padding = { top: 0, bottom: 0 },
     onPress,
     onLongPress,
     onPinPress,
@@ -43,8 +37,24 @@ const TaskMap = forwardRef(function TaskMap(
   },
   ref,
 ) {
-  const camera = useRef(null);
   const map = useRef(null);
+
+  // Names under the pins only once the map is zoomed in far enough for them
+  // to fit; zoomed out they'd pile up on top of each other
+  const [showLabels, setShowLabels] = useState(true);
+
+  // The latest padding, for the camera moves below
+  const paddingRef = useRef(padding);
+  useEffect(() => {
+    paddingRef.current = padding;
+  }, [padding]);
+
+  // Only a new object when the numbers change, so the map isn't handed the
+  // same padding again on every render
+  const mapPadding = useMemo(
+    () => ({ top: padding.top, right: 0, bottom: padding.bottom, left: 0 }),
+    [padding.top, padding.bottom],
+  );
 
   // The camera can only be moved once the map has loaded. A move asked for
   // before that (finding where the person is, at start-up, can be quicker
@@ -79,57 +89,49 @@ const TaskMap = forwardRef(function TaskMap(
     }
   };
 
-  // What HomeScreen can ask the map to do. bottomInset is how much of the
-  // screen the sheet covers, so the point lands in the visible part above it.
+  // What HomeScreen can ask the map to do. The padding already keeps things
+  // in the part of the map above the sheet.
   useImperativeHandle(ref, () => ({
-    flyTo(latitude, longitude, { zoom = 15, bottomInset = 0 } = {}) {
+    flyTo(latitude, longitude, { zoom = 15 } = {}) {
       moveCamera(() =>
-        camera.current?.flyTo({
-          center: [longitude, latitude],
-          zoom,
-          duration: 900,
-          padding: { top: 0, right: 0, bottom: bottomInset, left: 0 },
-        }),
+        map.current?.animateCamera({ center: { latitude, longitude }, zoom }, { duration: 900 }),
       );
     },
-    // Frames a reminder circle in the part of the map that can be seen:
-    // `top` and `bottom` are how much of the screen the search bar and the
-    // sheet cover. A small circle still gets a street or two around it, so
-    // the map doesn't zoom in so far that there's nothing to recognise.
-    // easing 'fly' swoops (for a new place), 'ease' just slides and zooms
-    // (for a new radius).
-    fitCircle(latitude, longitude, radius, { top = 0, bottom = 0, easing = 'fly' } = {}) {
+    // Frames a reminder circle in the part of the map that can be seen. A
+    // small circle still gets a street or two around it, so the map doesn't
+    // zoom in so far that there's nothing to recognise.
+    //   bottom  how much the sheet will cover once it's settled, when it's
+    //           still on its way there, so the circle fits above it then
+    fitCircle(latitude, longitude, radius, { bottom = 0 } = {}) {
+      const [west, south, east, north] = circleBounds(latitude, longitude, Math.max(radius, 120));
+      const stillToCover = Math.max(0, bottom - paddingRef.current.bottom);
       moveCamera(() =>
-        camera.current?.fitBounds(circleBounds(latitude, longitude, Math.max(radius, 120)), {
-          padding: { top: top + 24, right: 32, bottom: bottom + 24, left: 32 },
-          duration: easing === 'fly' ? 800 : 350,
-          easing,
-        }),
+        map.current?.fitToCoordinates(
+          [
+            { latitude: south, longitude: west },
+            { latitude: north, longitude: east },
+          ],
+          {
+            edgePadding: { top: 24, right: 32, bottom: Math.round(24 + stillToCover), left: 32 },
+            animated: true,
+          },
+        ),
       );
     },
+    // The middle of the part of the map that can be seen
     async centre() {
-      const [longitude, latitude] = await map.current.getCenter();
-      return { latitude, longitude };
+      const camera = await map.current.getCamera();
+      return camera.center;
     },
   }));
 
-  const pins = useMemo(
+  const pinned = useMemo(
     () =>
-      collection(
-        tasks
-          .filter(hasPlace)
-          // While a task is being edited its draft pin replaces the old one
-          .filter(task => !(draft && draft.taskId === task.id))
-          .map(task =>
-            point(task.latitude, task.longitude, {
-              id: task.id,
-              name: task.name,
-              complete: task.complete,
-              selected: task.id === selectedId,
-            }),
-          ),
-      ),
-    [tasks, selectedId, draft],
+      tasks
+        .filter(hasPlace)
+        // While a task is being edited its draft pin replaces the old one
+        .filter(task => !(draft && draft.taskId === task.id)),
+    [tasks, draft],
   );
 
   const circles = useMemo(() => {
@@ -137,206 +139,236 @@ const TaskMap = forwardRef(function TaskMap(
     const selected = tasks.find(task => task.id === selectedId);
 
     if (draft?.placeOn && draft.latitude != null) {
-      shapes.push(
-        circlePolygon(draft.latitude, draft.longitude, draft.radius, { colour: colours.ink }),
-      );
+      shapes.push({
+        key: 'draft',
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        radius: draft.radius,
+        colour: colours.ink,
+      });
     } else if (selected && hasPlace(selected)) {
-      shapes.push(
-        circlePolygon(selected.latitude, selected.longitude, selected.radius, {
-          colour: colours.orange,
-        }),
-      );
+      shapes.push({
+        key: 'selected',
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+        radius: selected.radius,
+        colour: colours.orange,
+      });
       if (selected.triggerLatitude != null) {
-        shapes.push(
-          circlePolygon(
-            selected.triggerLatitude,
-            selected.triggerLongitude,
-            selected.triggerRadius,
-            { colour: colours.teal },
-          ),
-        );
+        shapes.push({
+          key: 'trigger',
+          latitude: selected.triggerLatitude,
+          longitude: selected.triggerLongitude,
+          radius: selected.triggerRadius,
+          colour: colours.teal,
+        });
       }
     }
 
-    return collection(shapes);
+    return shapes;
   }, [tasks, selectedId, draft]);
 
-  const savedPlaces = useMemo(
-    () =>
-      collection(
-        places.map(place =>
-          point(place.latitude, place.longitude, { id: place.id, name: place.name }),
-        ),
-      ),
-    [places],
-  );
-
-  const markers = useMemo(
-    () =>
-      collection(
-        draft?.placeOn && draft.latitude != null
-          ? [point(draft.latitude, draft.longitude, { kind: 'draft' })]
-          : [],
-      ),
-    [draft],
-  );
+  const draftPinned = draft?.placeOn && draft.latitude != null;
 
   return (
     <MapView
       ref={map}
       style={StyleSheet.absoluteFill}
-      mapStyle={MAP_STYLE}
-      // The map's credits must stay visible (MapTiler and OpenStreetMap
-      // require it); top-left, under the search bar, keeps them clear of the sheet.
-      attributionPosition={{ top: attributionTop, left: 12 }}
-      logo={false}
-      compass={false}
-      onPress={event => onPress?.(toLatLon(event.nativeEvent.lngLat))}
-      onLongPress={event => onLongPress?.(toLatLon(event.nativeEvent.lngLat))}
-      // Ready for camera moves once the style is in. Also after a failed
-      // load (no signal, say): the camera can still move, and the map fills
-      // in when it can.
-      onDidFinishLoadingStyle={mapReady}
-      onDidFinishLoadingMap={mapReady}
-      onDidFailLoadingMap={mapReady}
-      onRegionWillChange={event => {
+      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+      initialCamera={{
+        center: DEFAULT_CENTRE,
+        zoom: 12,
+        heading: 0,
+        pitch: 0,
+        altitude: 40000,
+      }}
+      mapPadding={mapPadding}
+      showsUserLocation={showUser}
+      // Caltal has its own "show where I am" button, under the profile picture
+      showsMyLocationButton={false}
+      showsCompass={false}
+      // No Google Maps buttons popping up when a pin is tapped, and the map
+      // doesn't jump to a pin when it's tapped
+      toolbarEnabled={false}
+      moveOnMarkerPress={false}
+      rotateEnabled={false}
+      pitchEnabled={false}
+      onMapReady={mapReady}
+      onPress={event => {
+        // Android also tells the map about taps on pins; the pin deals with those
+        if (event.nativeEvent.action === 'marker-press') {
+          return;
+        }
+        onPress?.(event.nativeEvent.coordinate);
+      }}
+      onLongPress={event => onLongPress?.(event.nativeEvent.coordinate)}
+      // A tap on a shop or station on Google's map is a tap on that spot. Its
+      // name isn't used: Google's terms don't allow storing their place data.
+      onPoiClick={event => onPress?.(event.nativeEvent.coordinate)}
+      onRegionChangeStart={(region, details) => {
         // Only the person's own drags and pinches, not the map moving itself
-        if (event.nativeEvent.userInteraction) {
+        if (details?.isGesture) {
           onUserMove?.();
         }
       }}
+      onRegionChangeComplete={region => {
+        setShowLabels(zoomOf(region) >= LABELS_FROM_ZOOM);
+      }}
     >
-      <Camera
-        ref={camera}
-        initialViewState={{
-          center: [DEFAULT_CENTRE.longitude, DEFAULT_CENTRE.latitude],
-          zoom: 12,
-        }}
-      />
+      {circles.map(circle => (
+        <Circle
+          key={`${circle.key}-${circle.latitude}-${circle.longitude}-${circle.radius}`}
+          center={{ latitude: circle.latitude, longitude: circle.longitude }}
+          radius={circle.radius}
+          fillColor={withOpacity(circle.colour, 0.12)}
+          strokeColor={withOpacity(circle.colour, 0.6)}
+          strokeWidth={2}
+        />
+      ))}
 
-      {showUser && <NativeUserLocation />}
+      {places.map(place => (
+        <Pin
+          // A change of name or look draws the marker afresh (see Pin)
+          key={`place-${place.id}-${place.name}-${showLabels}`}
+          coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+          anchor={anchorFor(showLabels)}
+          zIndex={2}
+          onPress={() => {
+            // Same rule as the task pins below
+            if (!onPlacePress?.(place.id)) {
+              onPress?.({ latitude: place.latitude, longitude: place.longitude });
+            }
+          }}
+        >
+          <Dot
+            fill="#ffffff"
+            border={colours.ink}
+            label={showLabels ? place.name : null}
+            bold
+          />
+        </Pin>
+      ))}
 
-      <GeoJSONSource id="radius-circles" data={circles}>
-        <Layer
-          id="radius-fill"
-          type="fill"
-          paint={{ 'fill-color': ['get', 'colour'], 'fill-opacity': 0.12 }}
-        />
-        <Layer
-          id="radius-edge"
-          type="line"
-          paint={{ 'line-color': ['get', 'colour'], 'line-width': 1.5, 'line-opacity': 0.6 }}
-        />
-      </GeoJSONSource>
+      {pinned.map(task => {
+        const selected = task.id === selectedId;
+        return (
+          <Pin
+            key={`task-${task.id}-${task.name}-${task.complete}-${selected}-${showLabels}`}
+            coordinate={{ latitude: task.latitude, longitude: task.longitude }}
+            anchor={anchorFor(showLabels)}
+            zIndex={selected ? 4 : 3}
+            onPress={() => {
+              // onPinPress says whether it used the tap. If not (while
+              // placing a new pin, say), the tap goes to the map instead, so
+              // the new pin can go on this spot.
+              if (!onPinPress?.(task.id)) {
+                onPress?.({ latitude: task.latitude, longitude: task.longitude });
+              }
+            }}
+          >
+            <Dot
+              fill={selected ? colours.ink : task.complete ? colours.faint : colours.orange}
+              border="#ffffff"
+              big={selected}
+              label={showLabels ? task.name : null}
+            />
+          </Pin>
+        );
+      })}
 
-      <GeoJSONSource
-        id="saved-places"
-        data={savedPlaces}
-        onPress={event => {
-          const feature = event.nativeEvent.features[0];
-          // Same rule as the task pins below: stop the tap only if it was used
-          if (feature && onPlacePress?.(feature.properties.id)) {
-            event.stopPropagation();
-          }
-        }}
-      >
-        <Layer
-          id="saved-place"
-          type="circle"
-          paint={{
-            'circle-radius': 7,
-            'circle-color': '#ffffff',
-            'circle-stroke-width': 3,
-            'circle-stroke-color': colours.ink,
-          }}
-        />
-        <Layer
-          id="saved-place-label"
-          type="symbol"
-          layout={{
-            'text-field': ['get', 'name'],
-            'text-font': ['Noto Sans Bold'],
-            'text-size': 12,
-            'text-anchor': 'top',
-            'text-offset': [0, 1],
-            'text-optional': true,
-          }}
-          paint={{
-            'text-color': colours.ink,
-            'text-halo-color': '#ffffff',
-            'text-halo-width': 1.5,
-          }}
-        />
-      </GeoJSONSource>
-
-      <GeoJSONSource
-        id="task-pins"
-        data={pins}
-        onPress={event => {
-          const feature = event.nativeEvent.features[0];
-          // onPinPress says whether it used the tap. If it did, stop the tap
-          // reaching the map's own onPress too. If not (while placing a new
-          // pin, say), let it through so the pin can go next to this one.
-          if (feature && onPinPress?.(feature.properties.id)) {
-            event.stopPropagation();
-          }
-        }}
-      >
-        <Layer
-          id="task-pin"
-          type="circle"
-          paint={{
-            'circle-radius': ['case', ['get', 'selected'], 10, 8],
-            'circle-color': [
-              'case',
-              ['get', 'selected'],
-              colours.ink,
-              ['get', 'complete'],
-              colours.faint,
-              colours.orange,
-            ],
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff',
-          }}
-        />
-        <Layer
-          id="task-label"
-          type="symbol"
-          layout={{
-            'text-field': ['get', 'name'],
-            'text-font': ['Noto Sans Regular'],
-            'text-size': 12,
-            'text-anchor': 'top',
-            'text-offset': [0, 1.1],
-            'text-optional': true,
-            'text-max-width': 10,
-          }}
-          paint={{
-            'text-color': colours.ink,
-            'text-halo-color': '#ffffff',
-            'text-halo-width': 1.5,
-          }}
-        />
-      </GeoJSONSource>
-
-      <GeoJSONSource id="markers" data={markers}>
-        <Layer
-          id="marker"
-          type="circle"
-          paint={{
-            'circle-radius': 9,
-            'circle-color': colours.ink,
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff',
-          }}
-        />
-      </GeoJSONSource>
+      {draftPinned && (
+        <Pin
+          key={`draft-${draft.latitude}-${draft.longitude}`}
+          coordinate={{ latitude: draft.latitude, longitude: draft.longitude }}
+          anchor={anchorFor(false)}
+          zIndex={5}
+        >
+          <Dot fill={colours.ink} border="#ffffff" big />
+        </Pin>
+      )}
     </MapView>
   );
 });
 
-function toLatLon([longitude, latitude]) {
-  return { latitude, longitude };
+const LABELS_FROM_ZOOM = 13;
+
+// Google Maps zoom from the span of the map that's on screen
+function zoomOf(region) {
+  return Math.log2(360 / Math.max(region.longitudeDelta, 1e-6));
 }
+
+// Each marker is a dot with an optional name under it. The anchor is the
+// middle of the dot, so the dot sits exactly on the spot.
+const DOT_SPACE = 24;
+const LABEL_SPACE = 34;
+
+function anchorFor(withLabel) {
+  return withLabel
+    ? { x: 0.5, y: DOT_SPACE / 2 / (DOT_SPACE + LABEL_SPACE) }
+    : { x: 0.5, y: 0.5 };
+}
+
+// A marker on the map. Android draws a marker's view into a picture and
+// reuses it. While tracksViewChanges is on it redraws all the time, which is
+// slow with many pins, so it's on just long enough for the first drawing. A
+// change of look remounts the marker (its key changes), which draws it again.
+function Pin({ children, ...markerProps }) {
+  const [drawing, setDrawing] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setDrawing(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Marker {...markerProps} tracksViewChanges={drawing}>
+      {children}
+    </Marker>
+  );
+}
+
+// What a marker looks like: a dot, with a name under it if there's room
+function Dot({ fill, border, big = false, label = null, bold = false }) {
+  const size = big ? 20 : 16;
+
+  return (
+    <View style={label ? styles.withLabel : styles.dotOnly}>
+      <View style={styles.dotSpace}>
+        <View
+          style={[
+            styles.dot,
+            { width: size, height: size, borderRadius: size / 2, backgroundColor: fill, borderColor: border },
+          ]}
+        />
+      </View>
+      {label != null && (
+        <Text style={[styles.label, bold && styles.labelBold]} numberOfLines={2}>
+          {label}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// '#fb8a28' → 'rgba(251, 138, 40, 0.12)'
+function withOpacity(hex, opacity) {
+  const value = parseInt(hex.slice(1), 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${opacity})`;
+}
+
+const styles = StyleSheet.create({
+  dotOnly: { width: DOT_SPACE, height: DOT_SPACE },
+  withLabel: { width: 120, height: DOT_SPACE + LABEL_SPACE, alignItems: 'center' },
+  dotSpace: { width: DOT_SPACE, height: DOT_SPACE, alignItems: 'center', justifyContent: 'center' },
+  dot: { borderWidth: 3 },
+  label: {
+    fontSize: 12,
+    lineHeight: 15,
+    color: colours.ink,
+    textAlign: 'center',
+    textShadowColor: '#ffffff',
+    textShadowRadius: 3,
+  },
+  labelBold: { fontWeight: '700' },
+});
 
 export default TaskMap;

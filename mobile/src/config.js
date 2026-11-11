@@ -2,9 +2,8 @@
 // into the app when it bundles the JavaScript. .env.local is gitignored, so the
 // key stays out of GitHub. (It is still inside the built app — every map key on
 // a phone is — which is why it gets its own key, separate from the website's.)
+// Used for place search. (The map itself is Google Maps: its key is in app.json.)
 export const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY ?? '';
-
-export const MAP_STYLE = `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`;
 
 // The website and the API behind it. caltal.fly.dev reaches the same server,
 // and builds made before the move still use it.

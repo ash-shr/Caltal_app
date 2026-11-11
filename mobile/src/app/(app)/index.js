@@ -2,7 +2,6 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } fro
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   Keyboard,
   Linking,
@@ -243,10 +242,7 @@ export default function Home() {
 
       const here = await whereAmI();
       if (here && !cancelled && !mapMoved.current) {
-        map.current?.flyTo(here.latitude, here.longitude, {
-          zoom: 14,
-          bottomInset: Dimensions.get('window').height * SNAP_FRACTIONS[HALF],
-        });
+        map.current?.flyTo(here.latitude, here.longitude, { zoom: 14 });
       }
     })().catch(() => {});
 
@@ -255,21 +251,27 @@ export default function Home() {
     };
   }, [setupDone]);
 
+  // How much of the map the search bar (top) and the sheet (bottom) cover. At
+  // full height the sheet hides the map anyway, so it counts as half.
+  const mapPadding = useMemo(
+    () => ({
+      top: insets.top + TOP_BAR,
+      bottom: height * SNAP_FRACTIONS[Math.min(sheetIndex, HALF)],
+    }),
+    [insets.top, height, sheetIndex],
+  );
+
   // Move the map so a point sits in the visible part above the sheet. If the
   // sheet is pulled up to full screen, lower it first so the map can be seen.
   const showOnMap = useCallback(
     (latitude, longitude, zoom = 15) => {
       mapMoved.current = true;
-      const index = Math.min(sheetIndex, HALF);
       if (sheetIndex > HALF) {
         sheet.current?.snapToIndex(HALF);
       }
-      map.current?.flyTo(latitude, longitude, {
-        zoom,
-        bottomInset: height * SNAP_FRACTIONS[index],
-      });
+      map.current?.flyTo(latitude, longitude, { zoom });
     },
-    [sheetIndex, height],
+    [sheetIndex],
   );
 
   // Show a reminder circle whole, in the space between the search bar and the
@@ -277,15 +279,13 @@ export default function Home() {
   // above it and the form (or task) in it can both be seen.
   //   sheetAt  the sheet position to fit above; HALF unless the sheet is to
   //            stay where it is
-  const showCircle = (latitude, longitude, radius, { easing = 'fly', sheetAt = HALF } = {}) => {
+  const showCircle = (latitude, longitude, radius, { sheetAt = HALF } = {}) => {
     mapMoved.current = true;
     if (sheetAt === HALF && sheetIndex !== HALF) {
       sheet.current?.snapToIndex(HALF);
     }
     map.current?.fitCircle(latitude, longitude, radius, {
-      top: insets.top + TOP_BAR,
       bottom: height * SNAP_FRACTIONS[sheetAt],
-      easing,
     });
   };
 
@@ -422,7 +422,7 @@ export default function Home() {
   // when the map can be seen, not with the sheet pulled up to full screen.
   const fitNewRadius = radius => {
     if (draft?.placeOn && draft.latitude != null && sheetIndex <= HALF) {
-      showCircle(draft.latitude, draft.longitude, radius, { easing: 'ease', sheetAt: sheetIndex });
+      showCircle(draft.latitude, draft.longitude, radius, { sheetAt: sheetIndex });
     }
   };
 
@@ -606,7 +606,7 @@ export default function Home() {
         selectedId={mode === 'task' ? selectedId : null}
         draft={mode === 'form' ? draft : null}
         showUser={canShowLocation}
-        attributionTop={insets.top + 124}
+        padding={mapPadding}
         onPress={pressMap}
         onLongPress={pressMap}
         onPinPress={pressPin}

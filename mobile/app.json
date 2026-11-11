@@ -85,7 +85,12 @@
       "@react-native-community/datetimepicker",
       "expo-image",
       "expo-router",
-      "@maplibre/maplibre-react-native",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyCoLWspnrIGFbt4pPbW2ZYKOzKvQAcj838"
+        }
+      ],
       [
         "expo-audio",
         {

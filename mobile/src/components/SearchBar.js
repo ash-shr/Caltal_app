@@ -194,6 +194,13 @@ export default function SearchBar({ getNear, saved = [], onSelect, onClear, onFo
               </Pressable>
             ))
           )}
+
+          {/* The search results come from MapTiler, using OpenStreetMap's
+              data, and both ask to be credited where they're shown. (The
+              credit used to be on the map, when the map was theirs too.) */}
+          {results.length > 0 && (
+            <Text style={styles.credit}>Search by MapTiler · © OpenStreetMap contributors</Text>
+          )}
         </ScrollView>
       )}
     </View>
@@ -233,4 +240,5 @@ const styles = StyleSheet.create({
   resultName: { fontSize: 15, color: colours.ink },
   resultAddress: { fontSize: 12, color: colours.faint, marginTop: 1 },
   message: { fontSize: 14, color: colours.muted, paddingHorizontal: 14, paddingVertical: 10 },
+  credit: { fontSize: 11, color: colours.faint, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 6 },
 });

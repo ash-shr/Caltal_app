@@ -7,7 +7,7 @@ import { navigate } from './router';
 // collecting something new or using a new service, it goes here first, and
 // the date changes. Written to cover UK data protection law (UK GDPR and the
 // Data Protection Act 2018), but not reviewed by a lawyer.
-const UPDATED = '22 October 2026';
+const UPDATED = '10 November 2026';
 
 // Word for word the notice the phone app shows before asking for background
 // location (mobile/src/placeReminders.js). Google wants the same words in the
@@ -232,7 +232,7 @@ function PrivacyPage({ signedIn }) {
             ],
             [
               'Showing maps and finding places you search for',
-              'Place searches, map area',
+              'Place searches, map area, how you move the map',
               'Performance of our contract with you',
             ],
             [
@@ -304,7 +304,7 @@ function PrivacyPage({ signedIn }) {
             ],
             [
               'MapTiler',
-              'Provides the maps and the place search. It receives the map area you view and what you type into the search.',
+              'Provides the place search, and the map on the website. It receives what you type into the search, the map area you search near, and the map area you view on the website.',
               'Switzerland',
             ],
             [
@@ -314,7 +314,7 @@ function PrivacyPage({ signedIn }) {
             ],
             [
               'Google',
-              'Verifies your identity if you choose to sign in with Google.',
+              'Shows the map in the phone app (Google Maps). For that, Google receives technical details such as your IP address, your phone’s model and operating system, a random ID for the map on this installation, and how you move and zoom the map. Google also verifies your identity if you choose to sign in with Google.',
               'United States',
             ],
             [
@@ -440,9 +440,10 @@ function PrivacyPage({ signedIn }) {
 
       <Section title="14. Other websites and services">
         <Paragraph>
-          The Service links to, and uses, services run by others, such as Google sign-in and the
-          map credits for MapTiler and OpenStreetMap. Their own privacy policies apply to what
-          they do with your data.
+          The Service links to, and uses, services run by others, such as Google Maps, Google
+          sign-in, MapTiler and OpenStreetMap. Their own privacy policies apply to what they do
+          with your data: for Google, that&apos;s the Google Privacy Policy
+          (policies.google.com/privacy).
         </Paragraph>
       </Section>
 

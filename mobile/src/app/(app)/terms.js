@@ -5,7 +5,7 @@ import { colours } from '../../theme';
 // The terms of use: the same words as the website's Terms page
 // (frontend/src/TermsPage.jsx), so change both together, and the date with
 // them. Written in plain English, but not reviewed by a lawyer.
-const UPDATED = '21 October 2026';
+const UPDATED = '10 November 2026';
 
 const SECTIONS = [
   {
@@ -38,6 +38,14 @@ const SECTIONS = [
       'is open, so a reminder may arrive late or not at all: for example when your battery is low, you ' +
       'have no signal, or location services are off. Do not rely on Caltal for anything urgent, medical ' +
       'or safety-critical.',
+  },
+  {
+    heading: 'Maps',
+    body:
+      'The map in the phone app is provided by Google Maps. By using it, you also agree to the ' +
+      'Google Maps/Google Earth Additional Terms of Service (maps.google.com/help/terms_maps) and ' +
+      'accept the Google Privacy Policy (policies.google.com/privacy). The map on the website and ' +
+      'the place search use MapTiler and OpenStreetMap data.',
   },
   {
     heading: 'Acceptable use',

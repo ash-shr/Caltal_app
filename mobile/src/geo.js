@@ -2,40 +2,7 @@ import { MAPTILER_KEY } from './config';
 
 const EARTH_RADIUS_METRES = 6_371_000;
 
-// A map can't draw "a circle of 200 metres" directly — it draws shapes made of
-// points. So build a 64-sided polygon that's indistinguishable from a circle.
-// GeoJSON puts longitude first: [lon, lat].
-export function circlePolygon(latitude, longitude, radiusMetres, properties = {}) {
-  const points = [];
-  const angularDistance = radiusMetres / EARTH_RADIUS_METRES;
-  const lat = (latitude * Math.PI) / 180;
-  const lon = (longitude * Math.PI) / 180;
-
-  for (let step = 0; step <= 64; step++) {
-    const bearing = (step / 64) * 2 * Math.PI;
-
-    const pointLat = Math.asin(
-      Math.sin(lat) * Math.cos(angularDistance) +
-        Math.cos(lat) * Math.sin(angularDistance) * Math.cos(bearing),
-    );
-    const pointLon =
-      lon +
-      Math.atan2(
-        Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat),
-        Math.cos(angularDistance) - Math.sin(lat) * Math.sin(pointLat),
-      );
-
-    points.push([(pointLon * 180) / Math.PI, (pointLat * 180) / Math.PI]);
-  }
-
-  return {
-    type: 'Feature',
-    properties,
-    geometry: { type: 'Polygon', coordinates: [points] },
-  };
-}
-
-// The box around a circle, as the map wants it: [west, south, east, north].
+// The box around a circle: [west, south, east, north].
 // Close enough for framing the map; a degree of longitude shrinks towards the
 // poles, hence the cos.
 export function circleBounds(latitude, longitude, radiusMetres) {
@@ -63,19 +30,8 @@ export function distanceMetres(latitude1, longitude1, latitude2, longitude2) {
   return 2 * EARTH_RADIUS_METRES * Math.asin(Math.sqrt(a));
 }
 
-export function point(latitude, longitude, properties = {}) {
-  return {
-    type: 'Feature',
-    properties,
-    geometry: { type: 'Point', coordinates: [longitude, latitude] },
-  };
-}
-
-export function collection(features) {
-  return { type: 'FeatureCollection', features };
-}
-
-// Place search, using MapTiler's geocoding with the same key as the map tiles.
+// Place search, using MapTiler's geocoding (OpenStreetMap's data). The map
+// itself is Google Maps; Google's own place search would cost per search.
 // `near` nudges results towards what's on screen, so "station" finds the one
 // in Leeds rather than one in Sydney.
 export async function searchPlaces(query, near, signal) {
